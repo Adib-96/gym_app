@@ -1,30 +1,28 @@
-"use client"
-import Image from 'next/image';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+"use client";
+import Image from "next/image";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 const Page = () => {
   const router = useRouter();
 
   const handleSubmit = async (e) => {
-  e.preventDefault();
-  const formData = new FormData(e.target);
+    e.preventDefault();
+    const formData = new FormData(e.target);
 
-  const res = await fetch("/api/register", {
-    method: "POST",
-    body: formData, // send FormData directly
-  });
+    const res = await fetch("/api/register", {
+      method: "POST",
+      body: formData, // send FormData directly
+    });
 
-  const result = await res.json();
-  if(result.status === 200) {
-    console.log(result)
-    setTimeout(()=> 
-      router.push('/signin')  
-      , 1000)
-  }else {
-    console.log(result.error)
-  }
-};
+    const result = await res.json();
+    if (result.status === 200) {
+      console.log(result);
+      setTimeout(() => router.push("/auth/signin"), 1000);
+    } else {
+      console.log(result.error);
+    }
+  };
 
   return (
     <div>
@@ -35,9 +33,8 @@ const Page = () => {
             className="flex items-center mb-6 text-2xl font-semibold text-gray-900 dark:text-white"
           >
             <Image
-            width={100}
-            height={100}
-
+              width={100}
+              height={100}
               className="w-8 h-8 mr-2"
               src="/images/dumbbell-svgrepo-com.svg"
               alt="logo"
@@ -98,31 +95,49 @@ const Page = () => {
                     required
                   />
                 </div>
-                <div className="flex items-start">
-                  <div className="flex items-center h-5">
+
+                {/* Role based */}
+                <div className="mb-4 border p-4 rounded-lg bg-gray-50 dark:bg-gray-700">
+                  <p className="block mb-2 text-sm text-center font-medium text-gray-900 dark:text-white">
+                    Select Role
+                  </p>
+                  <div className="flex justify-around items-start">
+                    <div className="flex items-center mb-2">
                     <input
-                      id="terms"
-                      aria-describedby="terms"
-                      type="checkbox"
-                      className="w-4 h-4 border border-gray-300 rounded bg-gray-50 focus:ring-3 focus:ring-primary-300 dark:bg-gray-700 dark:border-gray-600 dark:focus:ring-primary-600 dark:ring-offset-gray-800"
+                      type="radio"
+                      id="client"
+                      name="role"
+                      value="client"
+                      className="w-4 h-4 text-primary-600 bg-gray-100 border-gray-300 focus:ring-primary-500 dark:focus:ring-primary-600 dark:bg-gray-700 dark:border-gray-600"
                       required
                     />
-                  </div>
-                  <div className="ml-3 text-sm">
                     <label
-                      htmlFor="terms"
-                      className="font-light text-gray-500 dark:text-gray-300"
+                      htmlFor="client"
+                      className="ml-2 text-sm font-medium text-gray-900 dark:text-gray-300"
                     >
-                      I accept the{' '}
-                      <a
-                        className="font-medium text-primary-600 hover:underline dark:text-primary-500"
-                        href="#"
-                      >
-                        Terms and Conditions
-                      </a>
+                      Client
                     </label>
                   </div>
+
+                  <div className="flex items-center">
+                    <input
+                      type="radio"
+                      id="coach"
+                      name="role"
+                      value="coach"
+                      className="w-4 h-4 text-primary-600 bg-gray-100 border-gray-300 focus:ring-primary-500 dark:focus:ring-primary-600 dark:bg-gray-700 dark:border-gray-600"
+                    />
+                    <label
+                      htmlFor="coach"
+                      className="ml-2 text-sm font-medium text-gray-900 dark:text-gray-300"
+                    >
+                      Coach
+                    </label>
+                  </div>
+                  </div>
+                  
                 </div>
+
                 <button
                   type="submit"
                   className="w-full  bg-indigo-500 hover:bg-primary-700 focus:ring-4 focus:outline-none focus:ring-primary-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800"
@@ -130,7 +145,7 @@ const Page = () => {
                   Create an account
                 </button>
                 <p className="text-sm font-light text-gray-500 dark:text-gray-400">
-                  Already have an account?{' '}
+                  Already have an account?{" "}
                   <Link
                     href="signin"
                     className="font-medium text-primary-600 hover:underline dark:text-primary-500"

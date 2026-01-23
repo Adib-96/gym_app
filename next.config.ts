@@ -6,8 +6,13 @@ const nextConfig: NextConfig = {
       {
         protocol:"https",
         hostname: "images.unsplash.com",
-          port: '',           // usually empty
+        port: '',           // usually empty
         pathname: '/**',    // allow all paths from Unsplash
+      },
+      {protocol:"https",
+        hostname: "raw.githubusercontent.com",
+        port: '',           
+        pathname: '/**',    
       }
     ]
 

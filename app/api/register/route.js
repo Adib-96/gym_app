@@ -9,6 +9,7 @@ export async function POST(request) {
     const email = formData.get("email");
     const password = formData.get("password");
     const confirmPassword = formData.get("confirm-password");
+    const role = formData.get("role");
 
     // Basic validation
     if (!email || !password || !confirmPassword) {
@@ -25,6 +26,7 @@ export async function POST(request) {
     // Simulate saving to database
     console.log("Email:", email);
     console.log("Hashed Password:", hashedPassword);
+    console.log("Role:", role);
 
     return NextResponse.json({ message: "User registered successfully!" ,status : 200 });
   } catch (err) {

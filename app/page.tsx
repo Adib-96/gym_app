@@ -1,7 +1,9 @@
 import Navbar from "../components/Navbar"
-import Hero from "@/app/_components/Hero"
-import Testimonials from "@/app/_components/Testimonials"
-import HowItWork from "@/app/_components/HowItWork"
+import Hero from "../components/Hero"
+import Testimonials from "../components/Testimonials"
+import HowItWork from "../components/HowItWork"
+import Faq from "../components/Faq"
+import Footer from "../components/Footer"
 
 
 
@@ -12,6 +14,8 @@ const page = () => {
       <Hero/>
       <Testimonials/>
       <HowItWork/>
+      <Faq/>
+      <Footer/>
     </div>
   )
 }
