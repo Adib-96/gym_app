@@ -47,7 +47,7 @@ export async function logout(): Promise<void> {
   localStorage.removeItem('user');
   
   // Redirect to login
-  window.location.href = '/auth/signin';
+   window.location.href = '/auth/signin';
 }
 
 // API request with credentials (cookies are sent automatically)

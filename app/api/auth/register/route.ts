@@ -54,41 +54,29 @@ export async function POST(request: NextRequest) {
       `INSERT INTO users (name, email, password_hash, role) 
        VALUES ($1, $2, $3, $4) 
        RETURNING id, name, email, role, created_at`,
-      [name, email, hashedPassword, role] // Use role directly
+      [name, email, hashedPassword, role]
     );
 
     const user = userResult.rows[0];
     console.log('✅ User created in database:', user.id);
 
-    // 6. If user registered as 'user', create client record
+    // 6. If user registered as 'user', create client record WITHOUT coach
     if (role === 'user') {
       console.log('Creating client record for user:', user.id);
       
       try {
-        // Find a coach to assign (or use NULL for now)
-        const coaches = await query('SELECT id FROM coaches LIMIT 1');
-        const defaultCoachId = coaches.rows[0]?.id;
-        
-        if (defaultCoachId) {
-          await query(
-            `INSERT INTO clients (user_id, coach_id, date_of_birth, gender) 
-             VALUES ($1, $2, NULL, NULL)`,
-            [user.id, defaultCoachId]
-          );
-          console.log('✅ Client assigned to coach:', defaultCoachId);
-        } else {
-          // No coaches yet, create client without coach (coach_id can be NULL)
-          await query(
-            `INSERT INTO clients (user_id, date_of_birth, gender) 
-             VALUES ($1, NULL, NULL)`,
-            [user.id]
-          );
-          console.log('✅ Client created without coach assignment');
-        }
+        // CREATE CLIENT WITHOUT COACH ASSIGNMENT
+        // Let them choose/assign a coach later through UI
+        await query(
+          `INSERT INTO clients (user_id, date_of_birth, gender, health_notes) 
+           VALUES ($1, NULL, NULL, NULL)`,
+          [user.id]
+        );
+        console.log('✅ Client created - coach assignment pending');
       } catch (clientError) {
         console.error('⚠️ Client creation error:', clientError);
         // Don't fail registration if client creation fails
-        // User can still log in and choose a coach later
+        // User can still log in and complete profile later
       }
     }
     
