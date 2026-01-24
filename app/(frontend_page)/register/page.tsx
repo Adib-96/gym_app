@@ -35,7 +35,7 @@ const RegisterPage = () => {
       name: formData.get("name") as string,
       email: formData.get("email") as string,
       password: formData.get("password") as string,
-      role: formData.get("role") as string, // Will be "client" or "coach"
+      role: formData.get("role") as string,
     };
 
     try {
