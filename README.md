@@ -10,7 +10,7 @@ A comprehensive Software as a Service (SaaS) platform designed for gyms and fitn
 
 ## Features
 
-- **User Authentication**: Secure registration and login with JWT-based authentication for users, coaches, and admins.
+- **User Authentication**: Secure registration and login with JWT-based authentication for usders, coaches, and admins.
 - **Role-Based Dashboards**:
   - **Client Dashboard**: View personalized workouts, track progress, and access training plans.
   - **Coach Dashboard**: Manage clients, assign workouts, and monitor client activity.
@@ -74,16 +74,17 @@ A comprehensive Software as a Service (SaaS) platform designed for gyms and fitn
 - `GET /api/protected`: Protected route example
   
 ## Project Structure
-gym_sass/
-├── app/                    # Next.js app directory
-│   ├── api/                # API routes
-│   ├── (frontend_page)/    # Frontend pages
-│   └── globals.css         # Global styles
-├── components/             # Reusable React components
-├── lib/                    # Utility functions and services
-├── public/                 # Static assets
-│   └── images/             # Image assets (including diagram.png)
-└── [exercises.json](http://_vscodecontentref_/3)          # Exercise data (if used)
+     gym_sass/
+    ├── app/                   # Next.js app directory
+    |  ├── api/
+    |  ├── (frontend_page)/
+    |  └── globals.css
+    ├── components             # Reusable React components
+    ├── lib                    # Utilities fntions and services
+    ├── public                 # Static assets
+    |   └──images
+    ├── LICENSE
+    └── README.md
 
 ## Contributing
 1. Fork the repository.
