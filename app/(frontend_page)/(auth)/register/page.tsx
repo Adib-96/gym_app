@@ -3,12 +3,15 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { FaEye, FaEyeSlash } from "react-icons/fa";
+
 
 const RegisterPage = () => {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -142,16 +145,19 @@ const RegisterPage = () => {
                     disabled={loading}
                   />
                 </div>
-                
-                <div>
+                {/* Password Visibility Toggle */}
+                <div className="relative">
                   <label
                     htmlFor="password"
                     className="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
                   >
                     Password
                   </label>
+                  <span onClick={() => setShowPassword(!showPassword)} className="absolute left-85 top-8 transform translate-y-1/2 cursor-pointer">
+                    {showPassword ? <FaEyeSlash/> : <FaEye/>}
+                  </span>
                   <input
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     name="password"
                     id="password"
                     placeholder="••••••••"
@@ -246,7 +252,7 @@ const RegisterPage = () => {
                 <p className="text-sm font-light text-gray-500 dark:text-gray-400">
                   Already have an account?{" "}
                   <Link
-                    href="/auth/signin"
+                    href="/signin"
                     className="font-medium text-indigo-600 hover:underline dark:text-indigo-500"
                   >
                     Login here

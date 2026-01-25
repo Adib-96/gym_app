@@ -13,7 +13,7 @@ export default function ClientDashboard() {
     const currentUser = getCurrentUser();
     
     if (!currentUser) {
-      router.push('/auth/signin');
+      router.push('/signin');
       return;
     }
 

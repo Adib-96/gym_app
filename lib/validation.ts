@@ -18,12 +18,12 @@ export const ClientSchema = z.object({
 });
 
 // Workout validation
-export const WorkoutSchema = z.object({
-  name: z.string().min(1, "Workout name is required"),
-  description: z.string().optional(),
-  scheduled_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-  coach_id: z.string().uuid(),
-});
+// export const WorkoutSchema = z.object({
+//   name: z.string().min(1, "Workout name is required"),
+//   description: z.string().optional(),
+//   scheduled_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+//   coach_id: z.string().uuid(),
+// });
 
 // Login validation
 export const LoginSchema = z.object({
