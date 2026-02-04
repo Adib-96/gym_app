@@ -7,7 +7,7 @@ const Navbar = () => {
   const router = useRouter(); 
 
   return (
-    <div className="flex justify-around max-w-6xl lg:px-24 mx-auto md:justify-between items-center h-30">
+    <div className="flex justify-around max-w-7xl mx-auto md:justify-between items-center h-30">
         {/* LOGO */}
         <div className='w-30'>
           <Link href="/">
@@ -16,9 +16,9 @@ const Navbar = () => {
         </div>
         {/* Links */}
         <div className="hidden md:flex gap-6">
-          <Link href="/#Testimonials" className="p-2">Testimonials</Link>
-          <Link href="/#how-it-works" className="p-2">How it work</Link>
-          <Link href="/#FAQ" className="p-2">FAQ</Link>
+          <Link href="/#Testimonials" className="p-2 font-semibold">Testimonials</Link>
+          <Link href="/#how-it-works" className="p-2 font-semibold">How it work</Link>
+          <Link href="/#FAQ" className="p-2 font-semibold">FAQ</Link>
         </div>
 
         {/* register - sign in */}
