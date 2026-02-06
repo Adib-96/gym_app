@@ -7,18 +7,19 @@ const Navbar = () => {
   const router = useRouter(); 
 
   return (
-    <div className="flex justify-around max-w-7xl mx-auto md:justify-between items-center h-30">
+    <div className="fixed top-0 left-0 w-full z-50">
+    <div className="backdrop-blur-md bg-transparent flex justify-evenly w-full mx-auto  items-center h-24">
         {/* LOGO */}
         <div className='w-30'>
           <Link href="/">
-            <Image src="/images/logo.png" alt="logo" width={150} height={150} />
+            <Image src="/images/lg.png" alt="logo" width={150} height={150} />
           </Link>
         </div>
         {/* Links */}
-        <div className="hidden md:flex gap-6">
-          <Link href="/#Testimonials" className="p-2 font-semibold">Testimonials</Link>
-          <Link href="/#how-it-works" className="p-2 font-semibold">How it work</Link>
-          <Link href="/#FAQ" className="p-2 font-semibold">FAQ</Link>
+        <div className="hidden md:flex gap-6 text-white">
+          <Link href="/#Testimonials" className="p-2 font-light">Testimonials</Link>
+          <Link href="/#how-it-works" className="p-2 font-light">How it work</Link>
+          <Link href="/#FAQ" className="p-2 font-light">FAQ</Link>
         </div>
 
         {/* register - sign in */}
@@ -38,7 +39,13 @@ const Navbar = () => {
   </button>
         </div>
     </div>
+    </div>
+
   )
 }
 
 export default Navbar
+
+
+
+

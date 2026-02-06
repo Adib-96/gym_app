@@ -38,7 +38,7 @@ export default function Hero() {
       </div>
 
       {/* Heading */}
-      <h1 className="font-berkshire text-[45px]/[52px] md:text-6xl/[65px] mt-6 max-w-4xl">
+      <h1 className="mt-6 font-berkshire text-[45px]/[52px] md:text-6xl/[65px]  max-w-4xl">
         Train Smarter. Track Everything.
       </h1>
 
