@@ -10,7 +10,7 @@ export default function Hero() {
       className="flex flex-col items-center min-h-screen pb-48 text-center text-sm text-white max-md:px-2 bg-cover bg-center"
     >
       {/* Community badge */}
-      <div className="flex flex-wrap items-center justify-center p-1.5 mt-24 md:mt-28 rounded-full border border-slate-400 text-xs backdrop-blur">
+      <div className="flex flex-wrap items-center justify-center p-1.5 mt-44 rounded-full border border-slate-400 text-xs backdrop-blur">
         <div className="flex items-center">
           <Image
             className="rounded-full border-2 border-white"

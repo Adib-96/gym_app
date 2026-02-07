@@ -153,7 +153,7 @@ const RegisterPage = () => {
                   >
                     Password
                   </label>
-                  <span onClick={() => setShowPassword(!showPassword)} className="absolute left-85 top-8 transform translate-y-1/2 cursor-pointer">
+                  <span onClick={() => setShowPassword(!showPassword)} className="absolute left-10/12 md:left-85 top-8 transform translate-y-1/2 cursor-pointer">
                     {showPassword ? <FaEyeSlash/> : <FaEye/>}
                   </span>
                   <input

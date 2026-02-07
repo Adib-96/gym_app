@@ -16,7 +16,6 @@ export default function LoginPage() {
     setLoading(true);
     setError("");
 
-    console.log('📤 Attempting login:', { email });
 
     try {
       const response = await fetch("/api/auth/login", {
@@ -28,20 +27,15 @@ export default function LoginPage() {
         body: JSON.stringify({ email, password }),
       });
 
-      console.log('📥 Response status:', response.status);
       
       const data = await response.json();
-      console.log('📥 Response data:', data);
 
       if (response.ok && data.success) {
         // Save user info to localStorage (but NOT token - token is in HTTP-only cookie)
         localStorage.setItem("user", JSON.stringify(data.user));
         
-        console.log('✅ Login successful, cookies set, redirecting...');
-        console.log('User role:', data.user.role);
+     
         
-        // Check if cookies were set
-        console.log('Document cookies:', document.cookie);
         
         // Redirect based on role
         if (data.user.role === 'coach') {
@@ -53,18 +47,10 @@ export default function LoginPage() {
         setError(data.error || "Login failed. Please try again.");
       }
     } catch (err: any) {
-      console.error('❌ Login error:', err);
       setError("Network error. Please check your connection.");
     } finally {
       setLoading(false);
     }
-  };
-
-  // Test function to check cookies
-  const testCookies = () => {
-    console.log('🍪 Current cookies:', document.cookie);
-    const cookies = document.cookie.split(';');
-    console.log('Parsed cookies:', cookies);
   };
 
   return (
@@ -96,13 +82,7 @@ export default function LoginPage() {
           </div>
         )}
 
-        {/* Debug button - remove in production */}
-        <button 
-          onClick={testCookies}
-          className="mb-4 text-xs text-gray-400 hover:text-gray-300"
-        >
-          🍪 Test Cookies
-        </button>
+
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
