@@ -6,7 +6,6 @@ export async function GET(request: NextRequest) {
     try {
         // Authenticate the request to get current user
         const { user, error } = await authenticateRequest(request);
-        
         if (error || !user) {
             return NextResponse.json(
                 { error: 'Unauthorized' },
@@ -16,6 +15,7 @@ export async function GET(request: NextRequest) {
 
         // Get workouts for the authenticated client
         const workouts = await getClientWorkouts(user.userId);
+        console.log('Fetched workouts:', workouts);
         const stats = await getClientStats(user.userId);
 
         return NextResponse.json({

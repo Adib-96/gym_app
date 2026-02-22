@@ -1,4 +1,5 @@
 import { query } from './db';
+import { getClientStreakStats } from './workout-logging-service';
 
 export interface WorkoutExercise {
   id: string;
@@ -22,6 +23,7 @@ export interface Workout {
   scheduledDate?: string;
   exercises: WorkoutExercise[];
   exerciseCount: number;
+  daysUntil?: number;
 }
 
 export interface ClientStats {
@@ -29,6 +31,11 @@ export interface ClientStats {
   currentStreak: number;
   averageWorkoutTime: number;
   completionRate: number;
+  coach?: {
+    name: string;
+    email: string;
+    userId?: string;
+  };
 }
 
 // Get all workouts for a client
@@ -44,6 +51,7 @@ export async function getClientWorkouts(clientId: string): Promise<Workout[]> {
         w.status,
         w.assigned_date as "assignedDate",
         w.scheduled_date as "scheduledDate",
+        EXTRACT(DAY FROM (w.assigned_date::timestamp - CURRENT_DATE::timestamp))::INTEGER as "daysUntil",
         COUNT(we.id) as "exerciseCount"
       FROM workouts w
       LEFT JOIN workout_exercises we ON w.id = we.workout_id
@@ -153,14 +161,34 @@ export async function getClientStats(clientId: string): Promise<ClientStats> {
     );
 
     const stats = result.rows[0];
-    const totalCompleted = parseInt(stats.totalCompleted) || 0;
     const totalWorkouts = parseInt(stats.totalWorkouts) || 0;
 
+    // Get real stats from logging service (based on sessions)
+    const streakStats = await getClientStreakStats(clientId);
+
+    // Get coach information
+    const coachResult = await query(
+      `SELECT co.id, u.id as "coachUserId", u.name, u.email
+       FROM clients cl
+       JOIN coaches co ON cl.coach_id = co.id
+       JOIN users u ON co.user_id = u.id
+       WHERE cl.user_id = $1 OR cl.id = $1
+       LIMIT 1`,
+      [clientId]
+    );
+
+    const coach = coachResult.rows[0] ? {
+      name: coachResult.rows[0].name,
+      email: coachResult.rows[0].email,
+      userId: coachResult.rows[0].coachUserId
+    } : undefined;
+
     return {
-      totalWorkoutsCompleted: totalCompleted,
-      currentStreak: 0, // Should be calculated based on daily completions
-      averageWorkoutTime: Math.round(parseFloat(stats.avgDuration) || 0),
-      completionRate: totalWorkouts > 0 ? Math.round((totalCompleted / totalWorkouts) * 100) : 0,
+      totalWorkoutsCompleted: parseInt(streakStats.totalCompleted) || 0,
+      currentStreak: streakStats.currentStreak || 0,
+      averageWorkoutTime: Math.round(parseFloat(streakStats.avgDuration) || 0),
+      completionRate: totalWorkouts > 0 ? Math.round(((parseInt(streakStats.totalCompleted) || 0) / totalWorkouts) * 100) : 0,
+      coach
     };
   } catch (error) {
     console.error('Error fetching client stats:', error);
