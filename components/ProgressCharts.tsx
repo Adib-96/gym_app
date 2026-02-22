@@ -356,7 +356,7 @@ export default function ProgressCharts({ clientId }: ProgressChartsProps) {
                         <circle cx={cx} cy={cy} r={4} className="fill-amber-400 shadow-xl" />
                       );
                     }
-                    return null; // Don't show regular dots, only PRs and active dots
+                    return <g />; // Don't show regular dots, only PRs and active dots
                   }}
                 />
               </AreaChart>
