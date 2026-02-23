@@ -103,6 +103,7 @@ export async function completeWorkoutSession(
   notes?: string
 ): Promise<WorkoutSession> {
   try {
+    // 1. Update the session status
     const result = await query(
       `UPDATE workout_sessions 
        SET completed_at = NOW(), duration_minutes = $2, status = 'completed', notes = $3
@@ -112,7 +113,54 @@ export async function completeWorkoutSession(
                  duration_minutes as "durationMinutes", notes, status`,
       [sessionId, durationMinutes, notes]
     );
-    return result.rows[0];
+
+    const session = result.rows[0];
+    if (!session) {
+      throw new Error('Session not found or failed to update');
+    }
+
+    // 2. Fetch all exercise logs for this session to update progress metrics
+    const logs = await query(
+      `SELECT 
+        we.exercise_id,
+        el.sets_completed,
+        el.reps_completed,
+        el.weight_used,
+        el.notes
+      FROM exercise_logs el
+      JOIN workout_exercises we ON el.workout_exercise_id = we.id
+      WHERE el.workout_session_id = $1`,
+      [sessionId]
+    );
+
+    // 3. Insert each log into progress_metrics
+    for (const log of logs.rows) {
+      const totalVolume = (log.sets_completed || 0) * (log.reps_completed || 0) * (log.weight_used || 0);
+
+      await query(
+        `INSERT INTO progress_metrics 
+          (client_id, exercise_id, date, weight_lifted, reps, sets, total_volume, notes)
+         VALUES ($1, $2, CURRENT_DATE, $3, $4, $5, $6, $7)
+         ON CONFLICT ON CONSTRAINT unique_metric 
+         DO UPDATE SET 
+          weight_lifted = EXCLUDED.weight_lifted,
+          reps = EXCLUDED.reps,
+          sets = EXCLUDED.sets,
+          total_volume = EXCLUDED.total_volume,
+          notes = EXCLUDED.notes`,
+        [
+          session.clientId,
+          log.exercise_id,
+          log.weight_used || 0,
+          log.reps_completed || 0,
+          log.sets_completed || 0,
+          totalVolume,
+          log.notes
+        ]
+      );
+    }
+
+    return session;
   } catch (error) {
     console.error('Error completing workout session:', error);
     throw error;
@@ -156,24 +204,26 @@ export async function getProgressData(clientId: string, exerciseId?: string, day
   try {
     const params: any[] = [clientId, new Date(Date.now() - days * 24 * 60 * 60 * 1000)];
     let whereClause = `WHERE pm.client_id = $1 AND pm.date >= $2`;
-    
-    if (exerciseId) {
+
+    if (exerciseId && exerciseId !== 'all') {
       whereClause += ` AND pm.exercise_id = $3`;
       params.push(exerciseId);
     }
 
     const result = await query(
       `SELECT 
-        id,
-        client_id as "clientId",
-        exercise_id as "exerciseId",
-        date,
-        weight_lifted as "weightLifted",
-        reps,
-        sets,
-        total_volume as "totalVolume",
-        notes
+        pm.id,
+        pm.client_id as "clientId",
+        pm.exercise_id as "exerciseId",
+        e.name as "exerciseName",
+        pm.date,
+        pm.weight_lifted as "weightLifted",
+        pm.reps,
+        pm.sets,
+        pm.total_volume as "totalVolume",
+        pm.notes
       FROM progress_metrics pm
+      JOIN exercises e ON pm.exercise_id = e.id
       ${whereClause}
       ORDER BY pm.date ASC`,
       params
@@ -220,18 +270,87 @@ export async function getSessionExerciseLogs(sessionId: string): Promise<any[]> 
 // Calculate client stats including streak
 export async function getClientStreakStats(clientId: string): Promise<any> {
   try {
-    const result = await query(
+    // 1. Basic stats
+    const basicStatsResult = await query(
       `SELECT 
-        COUNT(DISTINCT DATE(completed_at)) as "totalCompleted",
+        COUNT(*) as "totalCompleted",
         MAX(completed_at) as "lastWorkout",
-        COALESCE(AVG(EXTRACT(EPOCH FROM (completed_at - started_at))/60), 0)::INTEGER as "avgDuration"
+        COALESCE(AVG(duration_minutes), 0)::INTEGER as "avgDuration"
       FROM workout_sessions
       WHERE client_id = $1 AND status = 'completed'`,
       [clientId]
     );
-    return result.rows[0] || { totalCompleted: 0, lastWorkout: null, avgDuration: 0 };
+
+    // 2. Calculate current streak
+    const datesResult = await query(
+      `SELECT DISTINCT DATE(completed_at) as workout_date
+       FROM workout_sessions
+       WHERE client_id = $1 AND status = 'completed'
+       ORDER BY workout_date DESC`,
+      [clientId]
+    );
+
+    let currentStreak = 0;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const dates = datesResult.rows.map(r => new Date(r.workout_date));
+
+    if (dates.length > 0) {
+      let checkDate = new Date();
+      checkDate.setHours(0, 0, 0, 0);
+
+      // If the last workout was not today or yesterday, streak is broken
+      const lastWorkoutDate = new Date(dates[0]);
+      lastWorkoutDate.setHours(0, 0, 0, 0);
+
+      const diffTime = Math.abs(today.getTime() - lastWorkoutDate.getTime());
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+      if (diffDays <= 1) {
+        // Calculate streak
+        let expectedDate = lastWorkoutDate;
+        for (const date of dates) {
+          date.setHours(0, 0, 0, 0);
+          if (date.getTime() === expectedDate.getTime()) {
+            currentStreak++;
+            expectedDate.setDate(expectedDate.getDate() - 1);
+          } else {
+            break;
+          }
+        }
+      }
+    }
+
+    const stats = basicStatsResult.rows[0] || { totalCompleted: 0, lastWorkout: null, avgDuration: 0 };
+    return {
+      ...stats,
+      currentStreak
+    };
+
   } catch (error) {
     console.error('Error calculating streak stats:', error);
+    throw error;
+  }
+}
+
+// Get all exercises that have entries in progress_metrics for a client
+export async function getLoggedExercises(clientId: string): Promise<any[]> {
+  try {
+    const result = await query(
+      `SELECT DISTINCT 
+        e.id, 
+        e.name, 
+        e.muscle_group as "muscleGroup"
+      FROM progress_metrics pm
+      JOIN exercises e ON pm.exercise_id = e.id
+      WHERE pm.client_id = $1
+      ORDER BY e.name ASC`,
+      [clientId]
+    );
+    return result.rows;
+  } catch (error) {
+    console.error('Error fetching logged exercises:', error);
     throw error;
   }
 }

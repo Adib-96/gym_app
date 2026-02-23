@@ -5,6 +5,8 @@ import { getCurrentUser, logout } from '@/lib/auth-client';
 import WorkoutLoggingModal from '@/components/WorkoutLoggingModal';
 import ProgressCharts from '@/components/ProgressCharts';
 import WorkoutHistory from '@/components/WorkoutHistory';
+import { Send, User, MessageSquare, Award, Flame, Timer, TrendingUp, CheckCircle2, Clock } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface WorkoutExercise {
   id: string;
@@ -28,6 +30,7 @@ interface Workout {
   scheduledDate?: string;
   exercises: WorkoutExercise[];
   exerciseCount: number;
+  daysUntil?: number;
 }
 
 interface ClientStats {
@@ -35,6 +38,11 @@ interface ClientStats {
   currentStreak: number;
   averageWorkoutTime: number;
   completionRate: number;
+  coach?: {
+    name: string;
+    email: string;
+    userId?: string;
+  };
 }
 
 export default function ClientDashboard() {
@@ -48,6 +56,8 @@ export default function ClientDashboard() {
   const [selectedWorkout, setSelectedWorkout] = useState<Workout | null>(null);
   const [activeTab, setActiveTab] = useState<'workouts' | 'progress' | 'history' | 'messages'>('workouts');
   const [messages, setMessages] = useState<any[]>([]);
+  const [newMessage, setNewMessage] = useState('');
+  const [sendingMessage, setSendingMessage] = useState(false);
 
   useEffect(() => {
     const currentUser = getCurrentUser();
@@ -75,6 +85,7 @@ export default function ClientDashboard() {
       }
 
       const data = await response.json();
+      console.log('Fetched workouts:', data);
       setWorkouts(data.data.workouts);
       setStats(data.data.stats);
     } catch (err) {
@@ -94,6 +105,32 @@ export default function ClientDashboard() {
       }
     } catch (error) {
       console.error('Error fetching messages:', error);
+    }
+  };
+
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newMessage.trim() || !stats?.coach?.userId || sendingMessage) return;
+
+    try {
+      setSendingMessage(true);
+      const response = await fetch('/api/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          receiverId: stats.coach.userId,
+          content: newMessage.trim(),
+        }),
+      });
+
+      if (response.ok) {
+        setNewMessage('');
+        fetchMessages();
+      }
+    } catch (error) {
+      console.error('Error sending message:', error);
+    } finally {
+      setSendingMessage(false);
     }
   };
 
@@ -124,8 +161,19 @@ export default function ClientDashboard() {
   };
 
   const formatDate = (dateString: string) => {
+    if (!dateString) return "";
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  };
+
+  const getRelativeDateString = (daysUntil?: number, dateString?: string) => {
+    if (daysUntil === undefined || daysUntil === null) return formatDate(dateString || "");
+    if (daysUntil === 0) return 'Today';
+    if (daysUntil === 1) return 'Tomorrow';
+    if (daysUntil === -1) return 'Yesterday';
+    if (daysUntil > 1 && daysUntil <= 7) return `In ${daysUntil} days`;
+    if (daysUntil < -1 && daysUntil >= -7) return `${Math.abs(daysUntil)} days ago`;
+    return formatDate(dateString || "");
   };
 
   const getNextWorkout = () => {
@@ -266,96 +314,167 @@ export default function ClientDashboard() {
             </div>
 
             {/* Workouts Tab */}
-            {activeTab === 'workouts' && (
-              <div className="bg-gray-800 rounded-lg p-6">
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-2xl font-bold">Your Workouts</h2>
-                </div>
-
-                {workouts.length === 0 ? (
-                  <div className="text-center py-12">
-                    <p className="text-gray-400">No workouts assigned yet. Contact your coach!</p>
+            <AnimatePresence mode="wait">
+              {activeTab === 'workouts' && (
+                <motion.div
+                  key="workouts"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="bg-gray-800/50 backdrop-blur-xl border border-gray-700/50 rounded-[2rem] p-8 shadow-2xl"
+                >
+                  <div className="flex justify-between items-center mb-8">
+                    <div>
+                      <h2 className="text-3xl font-black text-white tracking-tighter">Combat Protocols</h2>
+                      <p className="text-gray-500 text-xs font-black uppercase tracking-widest mt-1">Assigned Mission Flow</p>
+                    </div>
                   </div>
-                ) : (
-                  <div className="space-y-4">
-                    {workouts.slice(0, 5).map((workout) => (
-                      <div key={workout.id} className="bg-gray-700 rounded p-4 hover:bg-gray-600 transition">
-                        <div className="flex justify-between items-start">
-                          <div className="flex-1">
-                            <h3 className="font-semibold text-lg">{workout.name}</h3>
-                            <p className="text-sm text-gray-400 mt-1">
-                              {workout.exerciseCount} exercises • {workout.totalDuration} minutes
-                            </p>
-                            <p className="text-xs text-gray-500 mt-2">{workout.description}</p>
-                          </div>
-                          <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(workout.status)}`}>
-                            {workout.status.charAt(0).toUpperCase() + workout.status.slice(1)}
-                          </span>
-                        </div>
 
-                        {/* Exercises Preview */}
-                        {workout.exercises.length > 0 && (
-                          <div className="mt-4 pt-4 border-t border-gray-600">
-                            <p className="text-xs text-gray-400 mb-2">Exercises:</p>
-                            <div className="space-y-1">
-                              {workout.exercises.slice(0, 3).map((exercise) => (
-                                <div key={exercise.id} className="text-xs text-gray-300">
-                                  • {exercise.exerciseName} - {exercise.sets}x{exercise.reps}
-                                  {exercise.weight && ` @ ${exercise.weight}kg`}
-                                </div>
-                              ))}
-                              {workout.exercises.length > 3 && (
-                                <div className="text-xs text-gray-400">
-                                  +{workout.exercises.length - 3} more exercises
-                                </div>
-                              )}
+                  {workouts.length === 0 ? (
+                    <div className="text-center py-20 bg-gray-900/40 rounded-[2rem] border border-dashed border-gray-800">
+                      <p className="text-gray-500 font-medium">No active protocols detected. Contact command.</p>
+                    </div>
+                  ) : (
+                    <div className="grid gap-6">
+                      {workouts.map((workout) => (
+                        <motion.div
+                          layout
+                          key={workout.id}
+                          className="bg-gray-900/60 border border-gray-800 rounded-[1.5rem] p-6 hover:border-indigo-500/50 transition-all group relative overflow-hidden"
+                        >
+                          <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 blur-3xl -mr-16 -mt-16 group-hover:bg-indigo-500/10 transition-all"></div>
+                          <div className="flex justify-between items-start relative z-10">
+                            <div className="flex-1">
+                              <h3 className="font-black text-xl text-white tracking-tight">{workout.name}</h3>
+                              <div className="flex items-center gap-4 mt-2">
+                                <span className="flex items-center gap-1.5 text-xs text-gray-400 font-bold uppercase tracking-widest">
+                                  <Timer size={14} /> {workout.totalDuration}m
+                                </span>
+                                <span className="flex items-center gap-1.5 text-xs text-gray-400 font-bold uppercase tracking-widest">
+                                  <Flame size={14} /> {workout.exerciseCount} segments
+                                </span>
+                              </div>
                             </div>
+                            <span className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest border ${workout.status === 'active' ? 'bg-indigo-600/10 text-indigo-400 border-indigo-500/30' : 'bg-gray-800 text-gray-500 border-gray-700'
+                              }`}>
+                              {workout.status}
+                            </span>
                           </div>
-                        )}
 
-                        <div className="mt-4 flex justify-between items-center">
-                          <span className="text-sm text-gray-400">
-                            Assigned: {formatDate(workout.assignedDate)}
-                          </span>
-                          <button
-                            onClick={() => handleStartWorkout(workout)}
-                            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded text-sm transition font-semibold"
-                          >
-                            Start Workout
-                          </button>
-                        </div>
-                      </div>
-                    ))}
+                          <div className="mt-8 flex justify-between items-center relative z-10">
+                            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
+                              Schedule: {getRelativeDateString(workout.daysUntil, workout.assignedDate)}
+                            </span>
+                            <button
+                              onClick={() => handleStartWorkout(workout)}
+                              className="px-6 py-3 bg-white text-gray-950 hover:bg-indigo-500 hover:text-white rounded-xl text-xs font-black uppercase tracking-widest transition-all active:scale-95 shadow-lg shadow-black/20"
+                            >
+                              Initiate
+                            </button>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  )}
+                </motion.div>
+              )}
+
+              {/* Progress Tab */}
+              {activeTab === 'progress' && (
+                <motion.div
+                  key="progress"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="bg-gray-800/40 backdrop-blur-xl border border-gray-700/50 rounded-[2.5rem] p-8"
+                >
+                  <div className="mb-8">
+                    <h2 className="text-3xl font-black text-white tracking-tighter">Evolution Signatures</h2>
+                    <p className="text-gray-500 text-xs font-black uppercase tracking-widest mt-1">Biometric & Output Analysis</p>
                   </div>
-                )}
-              </div>
-            )}
+                  <ProgressCharts />
+                </motion.div>
+              )}
 
-            {/* Progress Tab */}
-            {activeTab === 'progress' && (
-              <div className="bg-gray-800 rounded-lg p-6">
-                <h2 className="text-2xl font-bold mb-6">Your Progress</h2>
-                <ProgressCharts />
-              </div>
-            )}
+              {/* History Tab */}
+              {activeTab === 'history' && (
+                <motion.div
+                  key="history"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="bg-gray-800/40 backdrop-blur-xl border border-gray-700/50 rounded-[2.5rem] p-8"
+                >
+                  <div className="mb-8">
+                    <h2 className="text-3xl font-black text-white tracking-tighter">Legacy Logs</h2>
+                    <p className="text-gray-500 text-xs font-black uppercase tracking-widest mt-1">Verified Performance History</p>
+                  </div>
+                  <WorkoutHistory expanded={true} />
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* Messages Tab */}
             {activeTab === 'messages' && (
-              <div className="bg-gray-800 rounded-lg p-6">
-                <h2 className="text-2xl font-bold mb-6">Messages</h2>
-                <div className="space-y-4">
+              <div className="bg-gray-800/50 backdrop-blur-xl border border-gray-700/50 rounded-[2rem] overflow-hidden flex flex-col h-[600px]">
+                <div className="p-6 border-b border-gray-700/50 bg-gray-800/30 flex justify-between items-center">
+                  <div>
+                    <h2 className="text-xl font-bold">Direct Channels</h2>
+                    <p className="text-xs text-gray-500 font-bold uppercase tracking-widest mt-1">Status: Operational</p>
+                  </div>
+                  <div className="flex -space-x-2">
+                    <div className="w-8 h-8 rounded-full bg-indigo-600 border-2 border-gray-800 flex items-center justify-center text-[10px] font-bold">C</div>
+                    <div className="w-8 h-8 rounded-full bg-gray-700 border-2 border-gray-800 flex items-center justify-center text-[10px] font-bold">U</div>
+                  </div>
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar bg-gray-900/20">
                   {messages.length === 0 ? (
-                    <p className="text-gray-400">No messages yet.</p>
-                  ) : messages.map((msg) => (
-                    <div key={msg.id} className="bg-gray-700 rounded p-4">
-                      <div className="flex justify-between items-start mb-2">
-                        <span className="font-semibold text-indigo-300">{msg.sender_name}</span>
-                        <span className="text-xs text-gray-400">{new Date(msg.created_at).toLocaleString()}</span>
+                    <div className="flex flex-col items-center justify-center h-full text-center space-y-4">
+                      <div className="p-4 bg-gray-800 rounded-2xl border border-gray-700">
+                        <MessageSquare className="text-gray-600" size={32} />
                       </div>
-                      <p className="text-gray-200">{msg.content}</p>
+                      <p className="text-gray-500 text-sm font-medium">No encrypted traffic detected.<br />Initiate movement discussion.</p>
+                    </div>
+                  ) : [...messages].reverse().map((msg) => (
+                    <div
+                      key={msg.id}
+                      className={`flex ${msg.sender_id === (user as any)?.userId ? 'justify-end' : 'justify-start'}`}
+                    >
+                      <div className={`max-w-[80%] rounded-2xl p-4 ${msg.sender_id === (user as any)?.userId
+                        ? 'bg-indigo-600 text-white rounded-br-sm'
+                        : 'bg-gray-800 text-gray-200 border border-gray-700 rounded-bl-sm'
+                        }`}>
+                        <div className="flex justify-between items-baseline gap-4 mb-1">
+                          <span className="text-[10px] font-black uppercase tracking-widest opacity-60">
+                            {msg.sender_id === (user as any)?.userId ? 'Me' : msg.sender_name}
+                          </span>
+                          <span className="text-[10px] opacity-40">{new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                        </div>
+                        <p className="text-sm font-medium leading-relaxed">{msg.content}</p>
+                      </div>
                     </div>
                   ))}
                 </div>
+
+                <form onSubmit={handleSendMessage} className="p-6 bg-gray-800/30 border-t border-gray-700/50">
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={newMessage}
+                      onChange={(e) => setNewMessage(e.target.value)}
+                      placeholder="Transmit message..."
+                      className="w-full bg-gray-950/50 border border-gray-700 rounded-2xl py-4 px-6 text-sm font-medium outline-none focus:border-indigo-500 transition-all pr-16"
+                    />
+                    <button
+                      type="submit"
+                      disabled={!newMessage.trim() || sendingMessage}
+                      className="absolute right-2 top-2 bottom-2 w-12 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl flex items-center justify-center transition-all active:scale-95 disabled:opacity-50"
+                    >
+                      <Send size={18} />
+                    </button>
+                  </div>
+                </form>
               </div>
             )}
 
@@ -376,7 +495,9 @@ export default function ClientDashboard() {
                 <h3 className="font-semibold mb-4 text-indigo-100">Next Workout</h3>
                 <div>
                   <p className="font-bold text-xl">{nextWorkout.name}</p>
-                  <p className="text-sm text-indigo-200 mt-1">{nextWorkout.totalDuration} minutes</p>
+                  <p className="text-sm text-indigo-200 mt-1">
+                    {getRelativeDateString(nextWorkout.daysUntil, nextWorkout.assignedDate)} • {nextWorkout.totalDuration} minutes
+                  </p>
                   <p className="text-indigo-100 text-xs mt-3">{nextWorkout.description}</p>
                   <button className="w-full mt-4 px-4 py-2 bg-white text-indigo-900 hover:bg-gray-100 rounded font-semibold transition">
                     Start Now
@@ -390,11 +511,11 @@ export default function ClientDashboard() {
               <h3 className="font-semibold mb-4">Your Coach</h3>
               <div className="flex items-center">
                 <div className="w-12 h-12 bg-indigo-600 rounded-full flex items-center justify-center">
-                  <span className="font-bold">C</span>
+                  <span className="font-bold">{stats?.coach?.name?.charAt(0) || 'C'}</span>
                 </div>
                 <div className="ml-4">
-                  <p className="font-medium">Coach Name</p>
-                  <p className="text-sm text-gray-400">Certified Personal Trainer</p>
+                  <p className="font-medium">{stats?.coach?.name || 'Assigned Coach'}</p>
+                  <p className="text-sm text-gray-400">{stats?.coach?.email || 'Certified Personal Trainer'}</p>
                 </div>
               </div>
               <button
@@ -406,20 +527,35 @@ export default function ClientDashboard() {
             </div>
 
             {/* Quick Stats */}
-            <div className="bg-gray-800 rounded-lg p-6 mb-6">
-              <h3 className="font-semibold mb-4">Quick Stats</h3>
-              <div className="space-y-3">
-                <div>
-                  <p className="text-sm text-gray-400">Workouts Completed</p>
-                  <p className="text-xl font-bold">{stats?.totalWorkoutsCompleted || 0}</p>
+            <div className="bg-gray-800/40 backdrop-blur-xl border border-gray-700/50 rounded-[2rem] p-8 shadow-xl">
+              <h3 className="text-xs font-black text-gray-500 uppercase tracking-[0.2em] mb-6">Vital Metrics</h3>
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-indigo-600/10 rounded-xl">
+                      <CheckCircle2 className="text-indigo-400" size={18} />
+                    </div>
+                    <span className="text-sm text-gray-400 font-bold uppercase tracking-widest text-[10px]">Total Flow</span>
+                  </div>
+                  <span className="text-xl font-black text-white">{stats?.totalWorkoutsCompleted || 0}</span>
                 </div>
-                <div>
-                  <p className="text-sm text-gray-400">Current Streak</p>
-                  <p className="text-xl font-bold">{stats?.currentStreak || 0} days</p>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-orange-600/10 rounded-xl">
+                      <Flame className="text-orange-400" size={18} />
+                    </div>
+                    <span className="text-sm text-gray-400 font-bold uppercase tracking-widest text-[10px]">Stonework Streak</span>
+                  </div>
+                  <span className="text-xl font-black text-white">{stats?.currentStreak || 0}d</span>
                 </div>
-                <div>
-                  <p className="text-sm text-gray-400">Avg. Workout Time</p>
-                  <p className="text-xl font-bold">{stats?.averageWorkoutTime || 0} min</p>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-blue-600/10 rounded-xl">
+                      <Clock className="text-blue-400" size={18} />
+                    </div>
+                    <span className="text-sm text-gray-400 font-bold uppercase tracking-widest text-[10px]">Avg Duration</span>
+                  </div>
+                  <span className="text-xl font-black text-white">{stats?.averageWorkoutTime || 0}m</span>
                 </div>
               </div>
             </div>
@@ -435,7 +571,7 @@ export default function ClientDashboard() {
                     <div key={workout.id} className="flex justify-between items-center pb-3 border-b border-gray-700 last:border-b-0">
                       <div>
                         <p className="font-medium text-sm">{workout.name}</p>
-                        <p className="text-xs text-gray-400">{formatDate(workout.assignedDate)}</p>
+                        <p className="text-xs text-gray-400">{getRelativeDateString(workout.daysUntil, workout.assignedDate)}</p>
                       </div>
                       <span className={`px-2 py-1 rounded text-xs ${getStatusColor(workout.status)}`}>
                         {workout.status}

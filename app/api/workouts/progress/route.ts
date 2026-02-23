@@ -10,9 +10,9 @@ export async function GET(request: NextRequest) {
     if (error || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-
     const exerciseId = request.nextUrl.searchParams.get('exerciseId') || undefined;
-    const days = parseInt(request.nextUrl.searchParams.get('days') || '30');
+    const timeframe = request.nextUrl.searchParams.get('timeframe') || request.nextUrl.searchParams.get('days') || '30';
+    const days = parseInt(timeframe);
 
     const [progressData, streakStats] = await Promise.all([
       getProgressData(user.userId, exerciseId, days),

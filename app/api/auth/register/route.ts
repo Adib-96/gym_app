@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcrypt';
-import { query } from '@/lib/db';
+import supabase from '@/lib/supabase-server';
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,7 +12,6 @@ export async function POST(request: NextRequest) {
 
     // 2. Basic validation
     if (!name || !email || !password || !role) {
-      console.log('Missing fields:', { name, email, password, role });
       return NextResponse.json(
         { error: 'All fields are required' },
         { status: 400 }
@@ -34,12 +33,17 @@ export async function POST(request: NextRequest) {
     }
 
     // 3. Check if email already exists
-    const existingUser = await query(
-      'SELECT id FROM users WHERE email = $1',
-      [email]
-    );
-    
-    if (existingUser.rows.length > 0) {
+    const { data: existingUser, error: existingError } = await supabase
+      .from('users')
+      .select('id')
+      .eq('email', email)
+      .maybeSingle();
+
+    if (existingError) {
+      throw existingError;
+    }
+
+    if (existingUser) {
       return NextResponse.json(
         { error: 'Email already registered' },
         { status: 400 }
@@ -50,43 +54,65 @@ export async function POST(request: NextRequest) {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // 5. Insert user into database
-    const userResult = await query(
-      `INSERT INTO users (name, email, password_hash, role) 
-       VALUES ($1, $2, $3, $4) 
-       RETURNING id, name, email, role, created_at`,
-      [name, email, hashedPassword, role]
-    );
+    const { data: user, error: insertError } = await supabase
+      .from('users')
+      .insert([
+        {
+          name,
+          email,
+          password_hash: hashedPassword,
+          role,
+        },
+      ])
+      .select('id, name, email, role, created_at')
+      .single();
 
-    const user = userResult.rows[0];
-    console.log('✅ User created in database:', user.id);
+    if (insertError) {
+      throw insertError;
+    }
 
-    // 6. If user registered as 'user', create client record WITHOUT coach
+    console.log('✅ User created:', user.id);
+
+    // 6. If user registered as 'user', create client record
     if (role === 'user') {
       console.log('Creating client record for user:', user.id);
-      
-      try {
-        // CREATE CLIENT WITHOUT COACH ASSIGNMENT
-        // Let them choose/assign a coach later through UI
-        await query(
-          `INSERT INTO clients (user_id, date_of_birth, gender, health_notes) 
-           VALUES ($1, NULL, NULL, NULL)`,
-          [user.id]
-        );
-        console.log('✅ Client created - coach assignment pending');
-      } catch (clientError) {
+
+      const { error: clientError } = await supabase
+        .from('clients')
+        .insert([
+          {
+            user_id: user.id,
+            date_of_birth: null,
+            gender: null,
+            health_notes: null,
+          },
+        ]);
+
+      if (clientError) {
         console.error('⚠️ Client creation error:', clientError);
-        // Don't fail registration if client creation fails
-        // User can still log in and complete profile later
+      } else {
+        console.log('✅ Client created');
       }
     }
-    
+
     // 7. If user registered as 'coach', create coach record
     else if (role === 'coach') {
       console.log('Creating coach record for user:', user.id);
-      await query(
-        'INSERT INTO coaches (user_id, bio, certification) VALUES ($1, $2, $3)',
-        [user.id, '', '']
-      );
+
+      const { error: coachError } = await supabase
+        .from('coaches')
+        .insert([
+          {
+            user_id: user.id,
+            bio: '',
+            certification: '',
+          },
+        ]);
+
+      if (coachError) {
+        throw coachError;
+      }
+
       console.log('✅ Coach record created');
     }
 
@@ -98,21 +124,20 @@ export async function POST(request: NextRequest) {
         id: user.id,
         name: user.name,
         email: user.email,
-        role: user.role, // This will be 'user' or 'coach'
-      }
+        role: user.role,
+      },
     });
 
   } catch (error: any) {
     console.error('❌ Registration error:', error);
-    
-    // More specific error messages
+
     let errorMessage = 'Internal server error. Please try again.';
-    if (error.code === '23505') { // PostgreSQL unique violation
+
+    // Supabase/Postgres error handling
+    if (error.code === '23505') {
       errorMessage = 'Email already registered';
-    } else if (error.code === '23503') { // Foreign key violation
-      errorMessage = 'Database constraint error';
     }
-    
+
     return NextResponse.json(
       { error: errorMessage },
       { status: 500 }
@@ -120,9 +145,8 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Optional: Add GET method for testing
 export async function GET() {
-  return NextResponse.json({ 
+  return NextResponse.json({
     message: 'Register API is working',
     endpoint: '/api/auth/register',
     methods: ['POST', 'GET']

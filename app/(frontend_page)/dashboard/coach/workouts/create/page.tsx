@@ -1,6 +1,6 @@
 
 "use client";
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth-client';
 import { FaTrash, FaPlus, FaSave } from 'react-icons/fa';
@@ -24,7 +24,7 @@ interface WorkoutExercise {
     notes?: string;
 }
 
-export default function CreateWorkoutPage() {
+function CreateWorkoutContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const preSelectedClientId = searchParams.get('clientId');
@@ -297,5 +297,13 @@ export default function CreateWorkoutPage() {
                 </form>
             </div>
         </div>
+    );
+}
+
+export default function CreateWorkoutPage() {
+    return (
+        <Suspense fallback={<div className="p-8 text-white min-h-screen bg-gray-900">Loading workout creation system...</div>}>
+            <CreateWorkoutContent />
+        </Suspense>
     );
 }
