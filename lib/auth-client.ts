@@ -3,11 +3,11 @@
 // Check if user is logged in (using cookies)
 export function isAuthenticated(): boolean {
   if (typeof window === 'undefined') return false;
-  
+
   // Try to get role from cookie first (non-HTTP-only)
   const cookies = document.cookie.split(';');
   const tokenCookie = cookies.find(c => c.trim().startsWith('user_role='));
-  
+
   return !!tokenCookie;
 }
 
@@ -32,7 +32,7 @@ export function getToken(): string | null {
 // Enhanced logout with API call
 export async function logout(): Promise<void> {
   if (typeof window === 'undefined') return;
-  
+
   try {
     // Call logout API to clear cookies
     await fetch('/api/auth/logout', {
@@ -42,25 +42,25 @@ export async function logout(): Promise<void> {
   } catch (error) {
     console.error('Logout API call failed:', error);
   }
-  
+
   // Clear localStorage
   localStorage.removeItem('user');
-  
+
   // Redirect to login
-   window.location.href = '/signin';
+  window.location.href = '/auth/signin';
 }
 
 // API request with credentials (cookies are sent automatically)
 export async function authFetch(url: string, options: RequestInit = {}) {
   console.log(`🔗 Fetching: ${url}`);
-  
+
   const response = await fetch(url, {
     ...options,
     credentials: 'include', // Send cookies automatically
   });
 
   console.log(`📥 Response for ${url}:`, response.status);
-  
+
   if (response.status === 401) {
     console.warn('⚠️ 401 Unauthorized - logging out');
     await logout();
@@ -91,13 +91,13 @@ export function isClient(): boolean {
 // Get role from cookie (non-HTTP-only)
 export function getRoleFromCookie(): string | null {
   if (typeof window === 'undefined') return null;
-  
+
   const cookies = document.cookie.split(';');
   const roleCookie = cookies.find(c => c.trim().startsWith('user_role='));
-  
+
   if (roleCookie) {
     return roleCookie.split('=')[1];
   }
-  
+
   return null;
 }
