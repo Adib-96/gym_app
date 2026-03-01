@@ -184,10 +184,10 @@ export async function getClientStats(clientId: string): Promise<ClientStats> {
     } : undefined;
 
     return {
-      totalWorkoutsCompleted: parseInt(streakStats.totalCompleted) || 0,
-      currentStreak: streakStats.currentStreak || 0,
-      averageWorkoutTime: Math.round(parseFloat(streakStats.avgDuration) || 0),
-      completionRate: totalWorkouts > 0 ? Math.round(((parseInt(streakStats.totalCompleted) || 0) / totalWorkouts) * 100) : 0,
+      totalWorkoutsCompleted: parseInt(String(streakStats.totalCompleted)) || 0,
+      currentStreak: Number(streakStats.currentStreak) || 0,
+      averageWorkoutTime: Math.round(parseFloat(String(streakStats.avgDuration)) || 0),
+      completionRate: totalWorkouts > 0 ? Math.round(((parseInt(String(streakStats.totalCompleted)) || 0) / totalWorkouts) * 100) : 0,
       coach
     };
   } catch (error) {

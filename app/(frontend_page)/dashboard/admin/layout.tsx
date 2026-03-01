@@ -119,11 +119,11 @@ export default function AdminLayout({
                     </h1>
                     <div className="flex items-center space-x-4">
                         <div className="text-right">
-                            <p className="text-sm font-medium">{user.name}</p>
-                            <p className="text-xs text-gray-400 capitalize">{user.role}</p>
+                            <p className="text-sm font-medium">{user?.name}</p>
+                            <p className="text-xs text-gray-400 capitalize">{user?.role}</p>
                         </div>
                         <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-full flex items-center justify-center font-bold text-white shadow-lg">
-                            {user.name[0]}
+                            {user?.name[0]}
                         </div>
                     </div>
                 </header>
