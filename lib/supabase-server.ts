@@ -7,6 +7,6 @@ function createServerSupabase() {
   )
 }
 
-const supabase =  createServerSupabase()
+const supabase = createServerSupabase()
 
 export default supabase
