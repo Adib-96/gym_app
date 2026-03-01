@@ -22,11 +22,11 @@ const RegisterPage = () => {
     // Get form data
     const form = e.currentTarget;
     const formData = new FormData(form);
-    
+
     // Basic validation
     const password = formData.get("password") as string;
     const confirmPassword = formData.get("confirm-password") as string;
-    
+
     if (password !== confirmPassword) {
       setError("Passwords do not match");
       setLoading(false);
@@ -54,13 +54,13 @@ const RegisterPage = () => {
 
       if (res.ok) {
         setSuccess("Account created successfully! Redirecting to login...");
-        
+
         // Save token if your API returns one
         if (result.token) {
           localStorage.setItem("token", result.token);
         }
-        
-        setTimeout(() => router.push("/signin"), 2000);
+
+        setTimeout(() => router.push("/auth/signin"), 2000);
       } else {
         setError(result.error || "Registration failed");
       }
@@ -94,14 +94,14 @@ const RegisterPage = () => {
               <h1 className="text-xl font-bold leading-tight tracking-tight text-gray-900 md:text-2xl dark:text-white">
                 Create an account
               </h1>
-              
+
               {/* Error/Success Messages */}
               {error && (
                 <div className="p-3 bg-red-100 border border-red-400 text-red-700 rounded">
                   {error}
                 </div>
               )}
-              
+
               {success && (
                 <div className="p-3 bg-green-100 border border-green-400 text-green-700 rounded">
                   {success}
@@ -154,7 +154,7 @@ const RegisterPage = () => {
                     Password
                   </label>
                   <span onClick={() => setShowPassword(!showPassword)} className="absolute left-10/12 md:left-85 top-8 transform translate-y-1/2 cursor-pointer">
-                    {showPassword ? <FaEyeSlash/> : <FaEye/>}
+                    {showPassword ? <FaEyeSlash /> : <FaEye />}
                   </span>
                   <input
                     type={showPassword ? "text" : "password"}
@@ -168,7 +168,7 @@ const RegisterPage = () => {
                   />
                   <p className="text-xs text-gray-500 mt-1">Minimum 6 characters</p>
                 </div>
-                
+
                 <div>
                   <label
                     htmlFor="confirm-password"
@@ -248,11 +248,11 @@ const RegisterPage = () => {
                     "Create an account"
                   )}
                 </button>
-                
+
                 <p className="text-sm font-light text-gray-500 dark:text-gray-400">
                   Already have an account?{" "}
                   <Link
-                    href="/signin"
+                    href="/auth/signin"
                     className="font-medium text-indigo-600 hover:underline dark:text-indigo-500"
                   >
                     Login here

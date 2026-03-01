@@ -15,7 +15,7 @@ function ResetPasswordContent() {
   const token = searchParams.get('token');
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!token) {
       setError('Invalid reset link');
       return;
@@ -45,7 +45,7 @@ function ResetPasswordContent() {
 
       if (response.ok) {
         setMessage('Password reset successful! Redirecting to login...');
-        setTimeout(() => router.push('/signin'), 3000);
+        setTimeout(() => router.push('/auth/signin'), 3000);
       } else {
         setError(data.error || 'Failed to reset password');
       }
@@ -68,7 +68,7 @@ function ResetPasswordContent() {
               The reset link is invalid or has expired.
             </p>
             <Link
-              href="/forgot-password"
+              href="/auth/forgot-password"
               className="mt-4 inline-block font-medium text-blue-600 hover:text-blue-500"
             >
               Request a new reset link
@@ -90,7 +90,7 @@ function ResetPasswordContent() {
             Enter your new password below.
           </p>
         </div>
-        
+
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div className="rounded-md shadow-sm -space-y-px">
             <div>
@@ -149,7 +149,7 @@ function ResetPasswordContent() {
 
           <div className="text-center">
             <Link
-              href="/signin"
+              href="/auth/signin"
               className="font-medium text-blue-600 hover:text-blue-500"
             >
               Back to login
