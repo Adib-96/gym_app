@@ -63,7 +63,7 @@ export default function ClientDashboard() {
     const currentUser = getCurrentUser();
 
     if (!currentUser) {
-      router.push('/signin');
+      router.push('/auth/signin');
       return;
     }
 
@@ -475,14 +475,6 @@ export default function ClientDashboard() {
                     </button>
                   </div>
                 </form>
-              </div>
-            )}
-
-            {/* History Tab */}
-            {activeTab === 'history' && (
-              <div className="bg-gray-800 rounded-lg p-6">
-                <h2 className="text-2xl font-bold mb-6">Workout History</h2>
-                <WorkoutHistory expanded={true} />
               </div>
             )}
           </div>
