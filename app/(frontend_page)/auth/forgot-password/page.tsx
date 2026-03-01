@@ -31,11 +31,11 @@ export default function ForgotPasswordPage() {
         setMessage(data.message);
         setEmail('');
         // Optional: Redirect after successful submission
-        setTimeout(() => router.push('/signin'), 3000);
+        setTimeout(() => router.push('/auth/signin'), 3000);
       } else {
         setError(data.error || 'Something went wrong');
       }
-    } catch (err) {
+    } catch {
       setError('An error occurred. Please try again.');
     } finally {
       setLoading(false);
@@ -50,10 +50,10 @@ export default function ForgotPasswordPage() {
             Forgot your password?
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            Enter your email address and we'll send you a link to reset your password.
+            Enter your email address and we&apos;ll send you a link to reset your password.
           </p>
         </div>
-        
+
         <form className="mt-8 space-y-6 " onSubmit={handleSubmit}>
           <div className="rounded-md shadow-sm -space-y-px ">
             <div>
@@ -98,7 +98,7 @@ export default function ForgotPasswordPage() {
 
           <div className="text-center">
             <Link
-              href="/signin"
+              href="/auth/signin"
               className="font-medium text-blue-600 hover:text-blue-500"
             >
               Back to login

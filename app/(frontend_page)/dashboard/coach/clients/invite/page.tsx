@@ -2,7 +2,6 @@
 "use client";
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { getCurrentUser } from '@/lib/auth-client';
 import { FaPaperPlane } from 'react-icons/fa';
 
 export default function InviteClientPage() {
@@ -36,8 +35,8 @@ export default function InviteClientPage() {
             // Optional: Redirect after a delay
             setTimeout(() => router.push('/dashboard/coach/clients'), 2000);
 
-        } catch (err: any) {
-            setError(err.message);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : String(err));
         } finally {
             setLoading(false);
         }

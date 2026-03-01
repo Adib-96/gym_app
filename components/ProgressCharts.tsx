@@ -31,8 +31,17 @@ interface ProgressChartsProps {
   clientId?: string;
 }
 
+interface CustomTooltipProps {
+  active?: boolean;
+  payload?: { payload: ProgressMetric }[];
+  label?: string;
+  selectedMetric: 'weight' | 'volume';
+  maxWeight: number;
+  maxVolume: number;
+}
+
 // Specialized Custom Tooltip for premium feel
-const CustomTooltip = ({ active, payload, label, selectedMetric, maxWeight, maxVolume }: any) => {
+const CustomTooltip = ({ active, payload, selectedMetric, maxWeight, maxVolume }: CustomTooltipProps) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
     const isPR = selectedMetric === 'weight'
@@ -76,7 +85,7 @@ export default function ProgressCharts({ clientId }: ProgressChartsProps) {
   const [progressData, setProgressData] = useState<ProgressMetric[]>([]);
   const [availableExercises, setAvailableExercises] = useState<LoggedExercise[]>([]);
   const [selectedExerciseId, setSelectedExerciseId] = useState<string>('all');
-  const [streakStats, setStreakStats] = useState<any>(null);
+  const [streakStats, setStreakStats] = useState<{ currentStreak: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedMetric, setSelectedMetric] = useState<'weight' | 'volume'>('volume');
   const [timeframe, setTimeframe] = useState<number>(30);
@@ -87,6 +96,7 @@ export default function ProgressCharts({ clientId }: ProgressChartsProps) {
 
   useEffect(() => {
     fetchProgressData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeframe, selectedExerciseId, clientId]);
 
   const fetchExercises = async () => {
@@ -318,6 +328,7 @@ export default function ProgressCharts({ clientId }: ProgressChartsProps) {
                   fill="url(#chartGradient)"
                   animationDuration={1500}
                   animationEasing="ease-in-out"
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   activeDot={(props: any) => {
                     const { cx, cy, payload } = props;
                     const isPR = selectedMetric === 'weight'
@@ -345,6 +356,7 @@ export default function ProgressCharts({ clientId }: ProgressChartsProps) {
                       </g>
                     );
                   }}
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   dot={(props: any) => {
                     const { cx, cy, payload } = props;
                     const isPR = selectedMetric === 'weight'

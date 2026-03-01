@@ -1,25 +1,26 @@
+/* eslint-disable @next/next/no-img-element */
 export default function Example() {
     return (
         <>
 
             <section className="flex flex-col items-start px-6 md:px-16 lg:px-24 text-sm max-w-6xl mx-auto mt-20" id="Testimonials">
                 <div className="flex items-center mr-auto gap-2 text-indigo-600 bg-indigo-50 rounded-full px-3 py-1">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="size-6">
-  <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456ZM16.894 20.567 16.5 21.75l-.394-1.183a2.25 2.25 0 0 0-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 0 0 1.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 0 0 1.423 1.423l1.183.394-1.183.394a2.25 2.25 0 0 0-1.423 1.423Z" />
-</svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="size-6">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456ZM16.894 20.567 16.5 21.75l-.394-1.183a2.25 2.25 0 0 0-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 0 0 1.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 0 0 1.423 1.423l1.183.394-1.183.394a2.25 2.25 0 0 0-1.423 1.423Z" />
+                    </svg>
 
                     <span>Testimonials</span>
                 </div>
                 <h1
                     className="text-3xl font-medium bg-gradient-to-r from-slate-800 to-slate-500 text-transparent bg-clip-text mt-4">
-                    Don't just take our words
+                    Don&apos;t just take our words
                 </h1>
                 <p className="text-slate-500 mt-4 max-w-2xl">
                     Clients choose this coaching for the structure, accountability, and progress tracking that keeps them moving forward week after week.
                 </p>
-            
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-10">
-            
+
                     <div className="border border-slate-200 p-6 rounded-lg hover:-translate-y-1 hover:shadow-xl hover:border-transparent transition duration-500">
                         <p className="text-base text-slate-500">Love that I can work out at home or wherever I am. No excuses anymore!
                         </p>
@@ -37,10 +38,10 @@ export default function Example() {
                             </div>
                         </div>
                     </div>
-            
+
                     <div className="border border-slate-200 p-6 rounded-lg hover:-translate-y-1 hover:shadow-xl hover:border-transparent transition duration-500">
                         <p className="text-base text-slate-500">Honestly, I wasn’t consistent with workouts before, but this app keeps me on track. I actually look forward to exercising now!
-                            </p>
+                        </p>
                         <div className="flex items-center gap-3 mt-8">
                             <img className="size-12 rounded-full" src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200" alt="user image" />
                             <div>
@@ -55,7 +56,7 @@ export default function Example() {
                             </div>
                         </div>
                     </div>
-            
+
                     <div className="border border-slate-200 p-6 rounded-lg hover:-translate-y-1 hover:shadow-xl hover:border-transparent transition duration-500">
                         <p className="text-base text-slate-500">Incredible support and a fantastic experience from start to finish.
                         </p>
@@ -73,7 +74,7 @@ export default function Example() {
                             </div>
                         </div>
                     </div>
-            
+
                     <div className="border border-slate-200 p-6 rounded-lg hover:-translate-y-1 hover:shadow-xl hover:border-transparent transition duration-500">
                         <p className="text-base text-slate-500">
                             The workouts feel made for me. Not too easy, not impossible. I’m actually seeing results!</p>
@@ -91,7 +92,7 @@ export default function Example() {
                             </div>
                         </div>
                     </div>
-            
+
                     <div className="border border-slate-200 p-6 rounded-lg hover:-translate-y-1 hover:shadow-xl hover:border-transparent transition duration-500">
                         <p className="text-base text-slate-500">I was nervous about starting fitness, but the app is super beginner-friendly. Step by step, I’m getting stronger.</p>
                         <div className="flex items-center gap-3 mt-8">
@@ -108,7 +109,7 @@ export default function Example() {
                             </div>
                         </div>
                     </div>
-            
+
                     <div className="border border-slate-200 p-6 rounded-lg hover:-translate-y-1 hover:shadow-xl hover:border-transparent transition duration-500">
                         <p className="text-base text-slate-500">The user experience is outstanding and setup was a breeze.</p>
                         <div className="flex items-center gap-3 mt-8">
@@ -125,7 +126,7 @@ export default function Example() {
                             </div>
                         </div>
                     </div>
-            
+
                 </div>
             </section>
         </>

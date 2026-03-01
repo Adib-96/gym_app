@@ -6,7 +6,7 @@ const pool = new Pool({
 });
 
 // Helper function to execute queries
-export const query = async (text: string, params?: any[]) => {
+export const query = async (text: string, params?: unknown[]) => {
   try {
     const start = Date.now();
     const res = await pool.query(text, params);

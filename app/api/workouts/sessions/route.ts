@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authenticateRequest } from "@/lib/auth";
-import { startWorkoutSession, completeWorkoutSession, getSessionExerciseLogs } from "@/lib/workout-logging-service";
+import { startWorkoutSession, getSessionExerciseLogs } from "@/lib/workout-logging-service";
 
 // Start a new workout session
 export async function POST(request: NextRequest) {

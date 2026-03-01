@@ -25,7 +25,6 @@ export default function WorkoutLoggingModal({
 }: WorkoutLoggingModalProps) {
   const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
   const [sessionId, setSessionId] = useState<string | null>(null);
-  const [startTime, setStartTime] = useState<number | null>(null);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [exerciseSets, setExerciseSets] = useState<Record<number, SetLog[]>>({});
   const [loading, setLoading] = useState(false);
@@ -37,7 +36,6 @@ export default function WorkoutLoggingModal({
   // Initialize timer logic
   useEffect(() => {
     if (sessionId && !timerRef.current) {
-      setStartTime(Date.now());
       timerRef.current = setInterval(() => {
         setElapsedTime(prev => prev + 1);
       }, 1000);
@@ -107,9 +105,9 @@ export default function WorkoutLoggingModal({
     setExerciseSets(prev => ({ ...prev, [currentExerciseIndex]: updated }));
   };
 
-  const updateSet = (idx: number, field: keyof SetLog, value: any) => {
+  const updateSet = (idx: number, field: keyof SetLog, value: number | boolean) => {
     const updated = [...currentSets];
-    updated[idx] = { ...updated[idx], [field]: value };
+    updated[idx] = { ...updated[idx], [field]: value } as unknown as SetLog;
     setExerciseSets(prev => ({ ...prev, [currentExerciseIndex]: updated }));
   };
 
@@ -165,7 +163,7 @@ export default function WorkoutLoggingModal({
       } else {
         completeWorkout();
       }
-    } catch (error) {
+    } catch {
       alert('Logging Error');
     } finally {
       setLoading(false);
@@ -190,7 +188,7 @@ export default function WorkoutLoggingModal({
         onComplete();
         onClose();
       }
-    } catch (error) {
+    } catch {
       alert('Completion Error');
     } finally {
       setLoading(false);

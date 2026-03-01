@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import supabase from '@/lib/supabase-server';
 
 export async function POST(request: NextRequest) {
@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!['user', 'coach'].includes(role)) {
+    if (!['user', 'coach', 'admin'].includes(role)) {
       return NextResponse.json(
         { error: 'Invalid role selected' },
         { status: 400 }
@@ -128,13 +128,13 @@ export async function POST(request: NextRequest) {
       },
     });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('❌ Registration error:', error);
 
     let errorMessage = 'Internal server error. Please try again.';
 
     // Supabase/Postgres error handling
-    if (error.code === '23505') {
+    if (typeof error === 'object' && error !== null && 'code' in error && (error as { code?: string }).code === '23505') {
       errorMessage = 'Email already registered';
     }
 

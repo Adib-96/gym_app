@@ -2,7 +2,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 
 export async function apiFetch(endpoint: string, options: RequestInit = {}) {
   const token = localStorage.getItem('token');
-  
+
   const headers = {
     'Content-Type': 'application/json',
     ...(token && { 'Authorization': `Bearer ${token}` }),
@@ -26,13 +26,13 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
 // Example usage functions
 export const workoutApi = {
   getAll: () => apiFetch('/api/workouts'),
-  
-  create: (workoutData: any) => 
+
+  create: (workoutData: Record<string, unknown>) =>
     apiFetch('/api/workouts', {
       method: 'POST',
       body: JSON.stringify(workoutData),
     }),
-  
+
   assignToClient: (workoutId: string, clientId: string) =>
     apiFetch('/api/client-workouts', {
       method: 'POST',
@@ -41,17 +41,17 @@ export const workoutApi = {
 };
 
 export const userApi = {
-  register: (userData: any) => 
+  register: (userData: Record<string, unknown>) =>
     apiFetch('/api/auth/register', {
       method: 'POST',
       body: JSON.stringify(userData),
     }),
-  
-  login: (credentials: any) =>
+
+  login: (credentials: Record<string, unknown>) =>
     apiFetch('/api/auth/login', {
       method: 'POST',
       body: JSON.stringify(credentials),
     }),
-  
+
   getProfile: () => apiFetch('/api/auth/profile'),
 };

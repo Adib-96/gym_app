@@ -25,15 +25,15 @@ const Navbar = () => {
         {/* register - sign in */}
         <div className="flex gap-3 p-2">
           <button
-            className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-light md:font-medium  px-1 sm:px-3 md:px-4 md:py-1 md:rounded-xl shadow-md hover:shadow-lg transition duration-300 ease-in-out transform hover:-translate-y-1"
-            onClick={() => router.push('/register')}
+            className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-normal md:font-semibold  px-1 sm:px-3 md:px-4 md:py-1 rounded-2xl shadow-md hover:shadow-lg transition duration-300 ease-in-out transform hover:-translate-y-1"
+            onClick={() => router.push('/auth/register')}
           >
             Register
           </button>
 
           <button
-            className="bg-indigo-500 hover:bg-indigo-600 text-white font-light md:font-medium  px-1 sm:px-3 md:px-4  md:py-1 md:rounded-xl shadow-md hover:shadow-lg transition duration-300 ease-in-out transform hover:-translate-y-1"
-            onClick={() => router.push('/signin')}
+            className="bg-indigo-500 hover:bg-indigo-600 text-white font-normal md:font-semibold  px-1 sm:px-3 md:px-4  md:py-1 rounded-2xl shadow-md hover:shadow-lg transition duration-300 ease-in-out transform hover:-translate-y-1"
+            onClick={() => router.push('/auth/signin')}
           >
             Sign In
           </button>

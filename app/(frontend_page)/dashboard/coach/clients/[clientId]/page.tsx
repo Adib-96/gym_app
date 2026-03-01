@@ -28,7 +28,7 @@ interface ClientDetails {
 export default function ClientDetailsPage() {
     const router = useRouter();
     const params = useParams();
-    const [user, setUser] = useState<any>(null);
+
     const [client, setClient] = useState<ClientDetails | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -50,7 +50,6 @@ export default function ClientDetailsPage() {
             router.push('/auth/signin');
             return;
         }
-        setUser(currentUser);
         if (params.clientId) {
             fetchClientDetails(params.clientId as string);
         }
@@ -74,8 +73,8 @@ export default function ClientDetailsPage() {
                 goals: data.client.goals || '',
                 status: data.client.status || 'Active'
             });
-        } catch (err: any) {
-            setError(err.message);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : String(err));
         } finally {
             setLoading(false);
         }
@@ -97,8 +96,8 @@ export default function ClientDetailsPage() {
 
             setClient({ ...client, ...data.client });
             setIsEditing(false);
-        } catch (err: any) {
-            alert(err.message);
+        } catch (err) {
+            alert(err instanceof Error ? err.message : String(err));
         }
     };
 

@@ -28,7 +28,7 @@ function CreateWorkoutContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const preSelectedClientId = searchParams.get('clientId');
-    const [user, setUser] = useState<any>(null);
+    // const [user, setUser] = useState<{ role?: string } | null>(null);
     const [clients, setClients] = useState<Client[]>([]);
     const [exercises, setExercises] = useState<Exercise[]>([]);
     const [loading, setLoading] = useState(true);
@@ -47,7 +47,7 @@ function CreateWorkoutContent() {
             router.push('/auth/signin');
             return;
         }
-        setUser(currentUser);
+        // setUser(currentUser);
         fetchData();
 
         if (preSelectedClientId) {
@@ -89,9 +89,9 @@ function CreateWorkoutContent() {
         setAddedExercises(newExercises);
     };
 
-    const updateExercise = (index: number, field: keyof WorkoutExercise, value: any) => {
+    const updateExercise = (index: number, field: keyof WorkoutExercise, value: string | number) => {
         const newExercises = [...addedExercises];
-        newExercises[index] = { ...newExercises[index], [field]: value };
+        newExercises[index] = { ...newExercises[index], [field]: value } as unknown as WorkoutExercise;
         setAddedExercises(newExercises);
     };
 
@@ -121,8 +121,8 @@ function CreateWorkoutContent() {
 
             alert('Workout assigned successfully!');
             router.push('/dashboard/coach');
-        } catch (error: any) {
-            alert(error.message);
+        } catch (error) {
+            alert(error instanceof Error ? error.message : String(error));
         } finally {
             setSubmitting(false);
         }

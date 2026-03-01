@@ -27,18 +27,20 @@ export default function LoginPage() {
         body: JSON.stringify({ email, password }),
       });
 
-      
+
       const data = await response.json();
 
       if (response.ok && data.success) {
         // Save user info to localStorage (but NOT token - token is in HTTP-only cookie)
         localStorage.setItem("user", JSON.stringify(data.user));
-        
-     
-        
-        
+
+
+
+
         // Redirect based on role
-        if (data.user.role === 'coach') {
+        if (data.user.role === 'admin') {
+          router.push("/dashboard/admin");
+        } else if (data.user.role === 'coach') {
           router.push("/dashboard/coach");
         } else {
           router.push("/dashboard/client");
@@ -46,7 +48,7 @@ export default function LoginPage() {
       } else {
         setError(data.error || "Login failed. Please try again.");
       }
-    } catch (err: any) {
+    } catch {
       setError("Network error. Please check your connection.");
     } finally {
       setLoading(false);
@@ -110,8 +112,8 @@ export default function LoginPage() {
                 Password
               </label>
               <div className="text-sm">
-                <Link 
-                  href="/forgot-password" 
+                <Link
+                  href="/auth/forgot-password"
                   className="font-semibold text-indigo-400 hover:text-indigo-300"
                 >
                   Forgot password?
@@ -156,9 +158,9 @@ export default function LoginPage() {
 
         <div className="mt-6 text-center">
           <p className="text-sm text-gray-400">
-            Don't have an account?{" "}
-            <Link 
-              href="/register" 
+            Don&apos;t have an account?{" "}
+            <Link
+              href="/auth/register"
               className="font-semibold text-indigo-400 hover:text-indigo-300"
             >
               Register Here

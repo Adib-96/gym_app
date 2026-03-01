@@ -4,7 +4,7 @@ import { authenticateRequest } from '@/lib/auth';
 // This route requires authentication
 export async function GET(request: NextRequest) {
   const { user, error } = await authenticateRequest(request);
-  
+
   if (error || !user) {
     return NextResponse.json(
       { error: 'Unauthorized: ' + error },
@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
 // Example: Create workout (coach only)
 export async function POST(request: NextRequest) {
   const { user, error } = await authenticateRequest(request);
-  
+
   if (error || !user) {
     return NextResponse.json(
       { error: 'Unauthorized' },
@@ -41,15 +41,15 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     // Add your workout creation logic here
-    
+
     return NextResponse.json({
       success: true,
       message: 'Workout created by coach',
       workout: body,
       coach: user
     });
-    
-  } catch (error) {
+
+  } catch {
     return NextResponse.json(
       { error: 'Failed to create workout' },
       { status: 500 }

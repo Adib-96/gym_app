@@ -21,9 +21,9 @@ interface Message {
 
 export default function CoachDashboard() {
   const router = useRouter();
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<{ name?: string } | null>(null);
   const [loading, setLoading] = useState(true);
-  const [clients, setClients] = useState<any[]>([]);
+  const [clients, setClients] = useState<{ id: string; name: string; email: string; status: string; lastWorkout?: string; user_id: string }[]>([]);
   const [stats, setStats] = useState<DashboardStats>({
     totalClients: 0,
     activeClients: 0,
@@ -78,7 +78,7 @@ export default function CoachDashboard() {
     await logout();
   };
 
-  const openMessageModal = (client: any) => {
+  const openMessageModal = (client: { user_id: string; name: string }) => {
     setSelectedClientForMessage({ id: client.user_id, name: client.name });
     setIsMessageModalOpen(true);
   };

@@ -168,7 +168,7 @@ export async function completeWorkoutSession(
 }
 
 // Get workout history for a client
-export async function getWorkoutHistory(clientId: string, limit = 20): Promise<any[]> {
+export async function getWorkoutHistory(clientId: string, limit = 20): Promise<Record<string, unknown>[]> {
   try {
     const result = await query(
       `SELECT 
@@ -202,7 +202,7 @@ export async function getWorkoutHistory(clientId: string, limit = 20): Promise<a
 // Get progress data for charts
 export async function getProgressData(clientId: string, exerciseId?: string, days = 30): Promise<ProgressMetric[]> {
   try {
-    const params: any[] = [clientId, new Date(Date.now() - days * 24 * 60 * 60 * 1000)];
+    const params: (string | Date)[] = [clientId, new Date(Date.now() - days * 24 * 60 * 60 * 1000)];
     let whereClause = `WHERE pm.client_id = $1 AND pm.date >= $2`;
 
     if (exerciseId && exerciseId !== 'all') {
@@ -236,7 +236,7 @@ export async function getProgressData(clientId: string, exerciseId?: string, day
 }
 
 // Get exercise session logs
-export async function getSessionExerciseLogs(sessionId: string): Promise<any[]> {
+export async function getSessionExerciseLogs(sessionId: string): Promise<Record<string, unknown>[]> {
   try {
     const result = await query(
       `SELECT 
@@ -268,7 +268,7 @@ export async function getSessionExerciseLogs(sessionId: string): Promise<any[]> 
 }
 
 // Calculate client stats including streak
-export async function getClientStreakStats(clientId: string): Promise<any> {
+export async function getClientStreakStats(clientId: string): Promise<Record<string, unknown>> {
   try {
     // 1. Basic stats
     const basicStatsResult = await query(
@@ -297,7 +297,7 @@ export async function getClientStreakStats(clientId: string): Promise<any> {
     const dates = datesResult.rows.map(r => new Date(r.workout_date));
 
     if (dates.length > 0) {
-      let checkDate = new Date();
+      const checkDate = new Date();
       checkDate.setHours(0, 0, 0, 0);
 
       // If the last workout was not today or yesterday, streak is broken
@@ -309,7 +309,7 @@ export async function getClientStreakStats(clientId: string): Promise<any> {
 
       if (diffDays <= 1) {
         // Calculate streak
-        let expectedDate = lastWorkoutDate;
+        const expectedDate = lastWorkoutDate;
         for (const date of dates) {
           date.setHours(0, 0, 0, 0);
           if (date.getTime() === expectedDate.getTime()) {
@@ -335,7 +335,7 @@ export async function getClientStreakStats(clientId: string): Promise<any> {
 }
 
 // Get all exercises that have entries in progress_metrics for a client
-export async function getLoggedExercises(clientId: string): Promise<any[]> {
+export async function getLoggedExercises(clientId: string): Promise<Record<string, unknown>[]> {
   try {
     const result = await query(
       `SELECT DISTINCT 
