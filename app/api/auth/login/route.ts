@@ -8,7 +8,6 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { email, password } = body;
 
-    console.log('🔐 Login attempt:', { email });
 
     // Validation
     if (!email || !password) {
@@ -24,7 +23,7 @@ export async function POST(request: NextRequest) {
        FROM users WHERE email = $1`,
       [email]
     );
-    
+
     if (userResult.rows.length === 0) {
       return NextResponse.json(
         { error: 'Invalid email or password' },
@@ -33,10 +32,9 @@ export async function POST(request: NextRequest) {
     }
 
     const user = userResult.rows[0];
-
     // Check password
     const passwordMatch = await bcrypt.compare(password, user.password_hash);
-    
+
     if (!passwordMatch) {
       return NextResponse.json(
         { error: 'Invalid email or password' },
@@ -46,9 +44,9 @@ export async function POST(request: NextRequest) {
 
     // Create JWT token
     const token = jwt.sign(
-      { 
-        userId: user.id, 
-        email: user.email, 
+      {
+        userId: user.id,
+        email: user.email,
         role: user.role,
         name: user.name
       },
@@ -60,12 +58,13 @@ export async function POST(request: NextRequest) {
     let additionalInfo = {};
     let clientId = null;
     let coachId = null;
-    
+
     if (user.role === 'user') {
       const clientResult = await query(
         'SELECT id as client_id, coach_id FROM clients WHERE user_id = $1',
         [user.id]
       );
+
       if (clientResult.rows.length > 0) {
         clientId = clientResult.rows[0].client_id;
         coachId = clientResult.rows[0].coach_id;
@@ -78,12 +77,14 @@ export async function POST(request: NextRequest) {
       if (coachResult.rows.length > 0) {
         coachId = coachResult.rows[0].coach_id;
       }
+    } else if (user.role === 'admin') {
+      console.log('👑 Admin login:', user.id);
     }
 
-    console.log('✅ Login successful:', { 
-      id: user.id, 
-      email: user.email, 
-      role: user.role 
+    console.log('✅ Login successful:', {
+      id: user.id,
+      email: user.email,
+      role: user.role
     });
 
     // Create response
@@ -126,7 +127,7 @@ export async function POST(request: NextRequest) {
 
   } catch (error: any) {
     console.error('❌ Login error:', error);
-    
+
     return NextResponse.json(
       { error: 'Internal server error. Please try again.' },
       { status: 500 }

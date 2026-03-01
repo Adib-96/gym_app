@@ -4,11 +4,11 @@ import { useRouter } from 'next/navigation'
 import Image from "next/image"
 import Link from "next/link"
 const Navbar = () => {
-  const router = useRouter(); 
+  const router = useRouter();
 
   return (
     <div className="fixed top-0 left-0 w-full z-50">
-    <div className="backdrop-blur-md bg-transparent flex justify-evenly w-full mx-auto  items-center h-24">
+      <div className="backdrop-blur-md bg-transparent flex justify-evenly w-full mx-auto  items-center h-24">
         {/* LOGO */}
         <div className='w-30'>
           <Link href="/">
@@ -24,21 +24,21 @@ const Navbar = () => {
 
         {/* register - sign in */}
         <div className="flex gap-3 p-2">
-            <button
-    className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-normal md:font-semibold  px-1 sm:px-3 md:px-4 md:py-1 rounded-2xl shadow-md hover:shadow-lg transition duration-300 ease-in-out transform hover:-translate-y-1"
-    onClick={() => router.push('/register')}
-  >
-    Register
-  </button>
+          <button
+            className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-normal md:font-semibold  px-1 sm:px-3 md:px-4 md:py-1 rounded-2xl shadow-md hover:shadow-lg transition duration-300 ease-in-out transform hover:-translate-y-1"
+            onClick={() => router.push('/auth/register')}
+          >
+            Register
+          </button>
 
-  <button
-    className="bg-indigo-500 hover:bg-indigo-600 text-white font-normal md:font-semibold  px-1 sm:px-3 md:px-4  md:py-1 rounded-2xl shadow-md hover:shadow-lg transition duration-300 ease-in-out transform hover:-translate-y-1"
-    onClick={() => router.push('/signin')}
-  >
-    Sign In
-  </button>
+          <button
+            className="bg-indigo-500 hover:bg-indigo-600 text-white font-normal md:font-semibold  px-1 sm:px-3 md:px-4  md:py-1 rounded-2xl shadow-md hover:shadow-lg transition duration-300 ease-in-out transform hover:-translate-y-1"
+            onClick={() => router.push('/auth/signin')}
+          >
+            Sign In
+          </button>
         </div>
-    </div>
+      </div>
     </div>
 
   )
