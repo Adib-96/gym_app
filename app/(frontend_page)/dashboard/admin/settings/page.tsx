@@ -11,6 +11,21 @@ import {
     ShieldAlert
 } from 'lucide-react';
 
+interface SettingField {
+    label: string;
+    type: 'text' | 'email' | 'toggle' | 'number' | 'select' | string;
+    defaultValue: string | boolean | number;
+    options?: string[];
+}
+
+interface Section {
+    title: string;
+    icon: any;
+    description: string;
+    fields?: SettingField[];
+    custom?: React.ReactNode;
+}
+
 const SettingsPage = () => {
     const [isSaving, setIsSaving] = useState(false);
 
@@ -22,7 +37,7 @@ const SettingsPage = () => {
         }, 1000);
     };
 
-    const sections = [
+    const sections: Section[] = [
         {
             title: 'General Settings',
             icon: Settings,
