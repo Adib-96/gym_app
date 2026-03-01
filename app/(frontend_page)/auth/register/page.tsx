@@ -64,7 +64,7 @@ const RegisterPage = () => {
       } else {
         setError(result.error || "Registration failed");
       }
-    } catch (err: any) {
+    } catch (err) {
       setError("Network error. Please try again.");
       console.error(err);
     } finally {

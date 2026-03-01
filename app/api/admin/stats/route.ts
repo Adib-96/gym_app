@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
             stats
         });
 
-    } catch (error: any) {
+    } catch (error) {
         console.error('❌ Admin Stats Error:', error);
         return NextResponse.json(
             { error: 'Internal server error' },

@@ -5,7 +5,7 @@ import { getCurrentUser, logout } from '@/lib/auth-client';
 import WorkoutLoggingModal from '@/components/WorkoutLoggingModal';
 import ProgressCharts from '@/components/ProgressCharts';
 import WorkoutHistory from '@/components/WorkoutHistory';
-import { Send, User, MessageSquare, Award, Flame, Timer, TrendingUp, CheckCircle2, Clock } from 'lucide-react';
+import { Send, MessageSquare, Flame, Timer, CheckCircle2, Clock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface WorkoutExercise {
@@ -55,7 +55,7 @@ export default function ClientDashboard() {
   const [loggingModalOpen, setLoggingModalOpen] = useState(false);
   const [selectedWorkout, setSelectedWorkout] = useState<Workout | null>(null);
   const [activeTab, setActiveTab] = useState<'workouts' | 'progress' | 'history' | 'messages'>('workouts');
-  const [messages, setMessages] = useState<any[]>([]);
+  const [messages, setMessages] = useState<{ id: string; sender_id: string; sender_name: string; content: string; created_at: string; }[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [sendingMessage, setSendingMessage] = useState(false);
 
@@ -214,7 +214,7 @@ export default function ClientDashboard() {
               </span>
             </div>
             <div className="flex items-center space-x-4">
-              <span className="text-gray-300">Welcome, {typeof user === 'object' && (user as any)?.name}!</span>
+              <span className="text-gray-300">Welcome, {typeof user === 'object' && (user as { name?: string })?.name}!</span>
               <button
                 onClick={handleLogout}
                 className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded text-sm transition"
@@ -439,15 +439,15 @@ export default function ClientDashboard() {
                   ) : [...messages].reverse().map((msg) => (
                     <div
                       key={msg.id}
-                      className={`flex ${msg.sender_id === (user as any)?.userId ? 'justify-end' : 'justify-start'}`}
+                      className={`flex ${msg.sender_id === (user as { userId?: string })?.userId ? 'justify-end' : 'justify-start'}`}
                     >
-                      <div className={`max-w-[80%] rounded-2xl p-4 ${msg.sender_id === (user as any)?.userId
+                      <div className={`max-w-[80%] rounded-2xl p-4 ${msg.sender_id === (user as { userId?: string })?.userId
                         ? 'bg-indigo-600 text-white rounded-br-sm'
                         : 'bg-gray-800 text-gray-200 border border-gray-700 rounded-bl-sm'
                         }`}>
                         <div className="flex justify-between items-baseline gap-4 mb-1">
                           <span className="text-[10px] font-black uppercase tracking-widest opacity-60">
-                            {msg.sender_id === (user as any)?.userId ? 'Me' : msg.sender_name}
+                            {msg.sender_id === (user as { userId?: string })?.userId ? 'Me' : msg.sender_name}
                           </span>
                           <span className="text-[10px] opacity-40">{new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                         </div>

@@ -1,4 +1,3 @@
-import { writeFile } from "node:fs/promises";
 import { query } from "./db";
 
 interface Muscle {
@@ -45,13 +44,13 @@ async function fetchExercises(): Promise<Exercise[]> {
       'X-API-Key': process.env.API_KEY || ''
     }
   });
-  
+
   if (!response.ok) {
     throw new Error(`Error fetching exercises: ${response.statusText}`);
   }
-  
+
   const apiExercises: ApiExercise[] = await response.json();
-  
+
   // Transform API data
   const exercises: Exercise[] = apiExercises.map(exercise => ({
     id: exercise.id,
@@ -64,7 +63,7 @@ async function fetchExercises(): Promise<Exercise[]> {
     // Use exercise.code or fallback to name slug if code is missing
     exerciseCode: exercise.code || exercise.name.toLowerCase().replace(/\s+/g, '_').replace(/[^\w\s]/gi, '')
   }));
-    
+
 
   // Updated insert query to include exercise_id column
   const insertQuery = `

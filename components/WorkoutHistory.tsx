@@ -23,6 +23,7 @@ export default function WorkoutHistory({ expanded = false }: WorkoutHistoryProps
 
   useEffect(() => {
     fetchWorkoutHistory();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchWorkoutHistory = async () => {
@@ -30,12 +31,12 @@ export default function WorkoutHistory({ expanded = false }: WorkoutHistoryProps
       setLoading(true);
       const limit = expanded ? 50 : 10;
       const response = await fetch(`/api/workouts/history?limit=${limit}`);
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Failed to fetch workout history');
       }
-      
+
       const data = await response.json();
       setHistory(data.data);
     } catch (error) {
@@ -109,9 +110,9 @@ export default function WorkoutHistory({ expanded = false }: WorkoutHistoryProps
                 </p>
               </div>
               <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(session.status)}`}>
-                {session.status === 'in_progress' ? 'In Progress' : 
-                 session.status === 'completed' ? 'Completed' : 
-                 'Abandoned'}
+                {session.status === 'in_progress' ? 'In Progress' :
+                  session.status === 'completed' ? 'Completed' :
+                    'Abandoned'}
               </span>
             </div>
           </div>
@@ -136,7 +137,7 @@ export default function WorkoutHistory({ expanded = false }: WorkoutHistoryProps
                 <div>
                   <p className="text-xs text-gray-400">Completed</p>
                   <p className="text-sm text-white mt-1">
-                    {session.completedAt 
+                    {session.completedAt
                       ? new Date(session.completedAt).toLocaleTimeString()
                       : '-'}
                   </p>

@@ -19,7 +19,7 @@ interface ReportStats {
 
 export default function CoachReports() {
     const router = useRouter();
-    const [user, setUser] = useState<any>(null);
+    // const [user, setUser] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [stats, setStats] = useState<ReportStats | null>(null);
 
@@ -29,7 +29,7 @@ export default function CoachReports() {
             router.push('/auth/signin');
             return;
         }
-        setUser(currentUser);
+        // setUser(currentUser);
         fetchReportData();
     }, [router]);
 

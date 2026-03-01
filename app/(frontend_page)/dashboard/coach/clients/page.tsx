@@ -14,7 +14,7 @@ interface Client {
 
 export default function ClientsPage() {
     const router = useRouter();
-    const [user, setUser] = useState<any>(null);
+
     const [clients, setClients] = useState<Client[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
@@ -25,7 +25,7 @@ export default function ClientsPage() {
             router.push('/auth/signin');
             return;
         }
-        setUser(currentUser);
+
         fetchClients();
     }, [router]);
 

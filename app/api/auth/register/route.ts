@@ -128,13 +128,13 @@ export async function POST(request: NextRequest) {
       },
     });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('❌ Registration error:', error);
 
     let errorMessage = 'Internal server error. Please try again.';
 
     // Supabase/Postgres error handling
-    if (error.code === '23505') {
+    if (typeof error === 'object' && error !== null && 'code' in error && (error as { code?: string }).code === '23505') {
       errorMessage = 'Email already registered';
     }
 

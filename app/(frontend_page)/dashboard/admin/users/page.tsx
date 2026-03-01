@@ -6,11 +6,8 @@ import {
     MoreVertical,
     UserPlus,
     Mail,
-    Shield,
     Calendar,
-    Loader2,
-    Check,
-    X
+    Loader2
 } from 'lucide-react';
 
 interface User {
@@ -53,6 +50,7 @@ const UsersPage = () => {
         }, 500);
 
         return () => clearTimeout(delayDebounceFn);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [searchTerm, roleFilter]);
 
     const handleRoleUpdate = async (userId: string, newRole: string) => {

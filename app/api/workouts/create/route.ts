@@ -95,11 +95,12 @@ export async function POST(request: NextRequest) {
     } catch (error) {
         await client.query('ROLLBACK');
         console.error('Error creating workout:', error);
-        // Add more details if it's a PG error
-        if ((error as any).detail) console.error('Error detail:', (error as any).detail);
+        if (typeof error === 'object' && error !== null && 'detail' in error) {
+            console.error('Error detail:', (error as { detail?: string }).detail);
+        }
 
         return NextResponse.json(
-            { error: 'Failed to create workout: ' + (error as Error).message },
+            { error: 'Failed to create workout: ' + (error instanceof Error ? error.message : String(error)) },
             { status: 500 }
         );
     } finally {

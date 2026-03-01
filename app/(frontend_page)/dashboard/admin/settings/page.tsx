@@ -2,9 +2,7 @@
 import React, { useState } from 'react';
 import {
     Settings,
-    Bell,
     Lock,
-    Globe,
     Database,
     Save,
     RefreshCcw,
@@ -20,7 +18,7 @@ interface SettingField {
 
 interface Section {
     title: string;
-    icon: any;
+    icon: React.ElementType;
     description: string;
     fields?: SettingField[];
     custom?: React.ReactNode;

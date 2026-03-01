@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
         const role = searchParams.get('role') || '';
 
         let queryText = 'SELECT id, name, email, role, created_at FROM users WHERE 1=1';
-        const params: any[] = [];
+        const params: string[] = [];
 
         if (search) {
             params.push(`%${search}%`);
@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
             users: usersResult.rows
         });
 
-    } catch (error: any) {
+    } catch (error) {
         console.error('❌ Admin Users Error:', error);
         return NextResponse.json(
             { error: 'Internal server error' },
@@ -78,7 +78,7 @@ export async function PATCH(request: NextRequest) {
             message: 'User role updated successfully'
         });
 
-    } catch (error: any) {
+    } catch (error) {
         console.error('❌ Admin User Update Error:', error);
         return NextResponse.json(
             { error: 'Internal server error' },

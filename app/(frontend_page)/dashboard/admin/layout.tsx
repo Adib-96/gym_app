@@ -21,7 +21,7 @@ export default function AdminLayout({
 }) {
     const router = useRouter();
     const pathname = usePathname();
-    const [user, setUser] = useState<any>(null);
+    const [user, setUser] = useState<{ name: string; role: string;[key: string]: unknown } | null>(null);
     const [loading, setLoading] = useState(true);
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
@@ -31,6 +31,7 @@ export default function AdminLayout({
             router.push('/auth/signin');
             return;
         }
+        // eslint-disable-next-line
         setUser(currentUser);
         setLoading(false);
     }, [router]);

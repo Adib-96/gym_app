@@ -54,8 +54,7 @@ export async function POST(request: NextRequest) {
       { expiresIn: '7d' }
     );
 
-    // Get additional info
-    let additionalInfo = {};
+
     let clientId = null;
     let coachId = null;
 
@@ -125,7 +124,7 @@ export async function POST(request: NextRequest) {
 
     return response;
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('❌ Login error:', error);
 
     return NextResponse.json(
