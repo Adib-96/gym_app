@@ -37,5 +37,5 @@ jobs:
       env:
         DATABASE_URL: ${{ secrets.DATABASE_URL }}
         NEXTAUTH_SECRET: ${{ secrets.API_KEY }}
-        SUPABASE_URL: ${{ secrets.SUPABASE_DB_URL }}
-        SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_DEFAULT_KEY }}
+        SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        SUPABASE_PUBLISHABLE_DEFAULT_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_DEFAULT_KEY }}
