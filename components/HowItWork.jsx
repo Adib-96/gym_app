@@ -23,9 +23,10 @@ const HowItWork = () => {
 
         {/* //here to add how it work section  */}
         <div className="flex flex-wrap items-center justify-center gap-8 pt-12">
-          <div className="max-w-72 w-full hover:-translate-y-0.5 transition duration-300">
+          <div className="relative max-w-72 w-full hover:-translate-y-2 transition-all duration-300 group">
+            <div className="absolute -top-4 -left-4 w-8 h-8 bg-indigo-600 text-white rounded-full flex items-center justify-center font-bold text-lg group-hover:scale-110 transition-transform">1</div>
             <Image
-              className="rounded-xl"
+              className="rounded-xl shadow-lg group-hover:shadow-xl transition-shadow"
               src="/images/book_call.svg"
               alt=""
               width={200}
@@ -39,9 +40,10 @@ const HowItWork = () => {
               Apply or Book a Call
             </p>
           </div>
-          <div className="max-w-72 w-full hover:-translate-y-0.5 transition duration-300">
+          <div className="relative max-w-72 w-full hover:-translate-y-2 transition-all duration-300 group">
+            <div className="absolute -top-4 -left-4 w-8 h-8 bg-indigo-600 text-white rounded-full flex items-center justify-center font-bold text-lg group-hover:scale-110 transition-transform">2</div>
             <Image
-              className="rounded-xl"
+              className="rounded-xl shadow-lg group-hover:shadow-xl transition-shadow"
               src="/images/plan.svg"
               alt=""
               width={200}
@@ -53,9 +55,10 @@ const HowItWork = () => {
               Get a Personalized Plan
             </p>
           </div>
-          <div className="max-w-72 w-full hover:-translate-y-0.5 transition duration-300">
+          <div className="relative max-w-72 w-full hover:-translate-y-2 transition-all duration-300 group">
+            <div className="absolute -top-4 -left-4 w-8 h-8 bg-indigo-600 text-white rounded-full flex items-center justify-center font-bold text-lg group-hover:scale-110 transition-transform">3</div>
             <Image
-              className="rounded-xl"
+              className="rounded-xl shadow-lg group-hover:shadow-xl transition-shadow"
               src="/images/track.svg"
               alt=""
               width={200}

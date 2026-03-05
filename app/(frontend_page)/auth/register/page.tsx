@@ -3,7 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { FaEye, FaEyeSlash } from "react-icons/fa";
+import { FaEye, FaEyeSlash, FaUser, FaEnvelope, FaLock, FaDumbbell } from "react-icons/fa";
 
 
 const RegisterPage = () => {
@@ -12,6 +12,7 @@ const RegisterPage = () => {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [selectedRole, setSelectedRole] = useState('user');
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -73,196 +74,234 @@ const RegisterPage = () => {
   };
 
   return (
-    <div>
-      <section className="bg-gray-50 dark:bg-gray-900 min-h-screen">
-        <div className="flex flex-col items-center justify-center px-6 py-8 mx-auto md:h-screen lg:py-0">
-          <Link
-            href="/"
-            className="flex items-center mb-6 text-2xl font-semibold text-gray-900 dark:text-white"
-          >
-            <Image
-              width={100}
-              height={100}
-              className="w-8 h-8 mr-2"
-              src="/images/dumbbell-svgrepo-com.svg"
-              alt="logo"
-            />
-            GymTracker
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-indigo-100 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-8">
+        {/* Logo and Header */}
+        <div className="text-center">
+          <Link href="/" className="inline-flex items-center space-x-2">
+            <FaDumbbell className="h-8 w-8 text-indigo-600" />
+            <span className="text-2xl font-bold text-gray-900">GymTracker</span>
           </Link>
-          <div className="w-full bg-white rounded-lg shadow dark:border md:mt-0 sm:max-w-md xl:p-0 dark:bg-gray-800 dark:border-gray-700">
-            <div className="p-6 space-y-4 md:space-y-6 sm:p-8">
-              <h1 className="text-xl font-bold leading-tight tracking-tight text-gray-900 md:text-2xl dark:text-white">
-                Create an account
-              </h1>
-
-              {/* Error/Success Messages */}
-              {error && (
-                <div className="p-3 bg-red-100 border border-red-400 text-red-700 rounded">
-                  {error}
-                </div>
-              )}
-
-              {success && (
-                <div className="p-3 bg-green-100 border border-green-400 text-green-700 rounded">
-                  {success}
-                </div>
-              )}
-
-              <form className="space-y-4 md:space-y-6" onSubmit={handleSubmit}>
-                {/* Add Name Field (You need this for your database) */}
-                <div>
-                  <label
-                    htmlFor="name"
-                    className="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
-                  >
-                    Your Name
-                  </label>
-                  <input
-                    type="text"
-                    name="name"
-                    id="name"
-                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                    placeholder="John Doe"
-                    required
-                    disabled={loading}
-                  />
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="email"
-                    className="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
-                  >
-                    Your email
-                  </label>
-                  <input
-                    type="email"
-                    name="email"
-                    id="email"
-                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                    placeholder="name@company.com"
-                    required
-                    disabled={loading}
-                  />
-                </div>
-                {/* Password Visibility Toggle */}
-                <div className="relative">
-                  <label
-                    htmlFor="password"
-                    className="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
-                  >
-                    Password
-                  </label>
-                  <span onClick={() => setShowPassword(!showPassword)} className="absolute left-10/12 md:left-85 top-8 transform translate-y-1/2 cursor-pointer">
-                    {showPassword ? <FaEyeSlash /> : <FaEye />}
-                  </span>
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    name="password"
-                    id="password"
-                    placeholder="••••••••"
-                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                    required
-                    minLength={6}
-                    disabled={loading}
-                  />
-                  <p className="text-xs text-gray-500 mt-1">Minimum 6 characters</p>
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="confirm-password"
-                    className="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
-                  >
-                    Confirm password
-                  </label>
-                  <input
-                    type="password"
-                    name="confirm-password"
-                    id="confirm-password"
-                    placeholder="••••••••"
-                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                    required
-                    disabled={loading}
-                  />
-                </div>
-
-                {/* Role Selection */}
-                <div className="mb-4 border p-4 rounded-lg bg-gray-50 dark:bg-gray-700">
-                  <p className="block mb-2 text-sm text-center font-medium text-gray-900 dark:text-white">
-                    Select Role
-                  </p>
-                  <div className="flex justify-around items-start">
-                    <div className="flex items-center mb-2">
-                      <input
-                        type="radio"
-                        id="user"
-                        name="role"
-                        value="user"
-                        className="w-4 h-4 text-primary-600 bg-gray-100 border-gray-300 focus:ring-primary-500 dark:focus:ring-primary-600 dark:bg-gray-700 dark:border-gray-600"
-                        required
-                        disabled={loading}
-                        defaultChecked
-                      />
-                      <label
-                        htmlFor="user"
-                        className="ml-2 text-sm font-medium text-gray-900 dark:text-gray-300"
-                      >
-                        User
-                      </label>
-                    </div>
-
-                    <div className="flex items-center">
-                      <input
-                        type="radio"
-                        id="coach"
-                        name="role"
-                        value="coach"
-                        className="w-4 h-4 text-primary-600 bg-gray-100 border-gray-300 focus:ring-primary-500 dark:focus:ring-primary-600 dark:bg-gray-700 dark:border-gray-600"
-                        disabled={loading}
-                      />
-                      <label
-                        htmlFor="coach"
-                        className="ml-2 text-sm font-medium text-gray-900 dark:text-gray-300"
-                      >
-                        Coach
-                      </label>
-                    </div>
-                  </div>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full bg-indigo-500 hover:bg-indigo-600 focus:ring-4 focus:outline-none focus:ring-indigo-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-indigo-600 dark:hover:bg-indigo-700 dark:focus:ring-indigo-800 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {loading ? (
-                    <span className="flex items-center justify-center">
-                      <svg className="animate-spin h-5 w-5 mr-3 text-white" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                      </svg>
-                      Creating Account...
-                    </span>
-                  ) : (
-                    "Create an account"
-                  )}
-                </button>
-
-                <p className="text-sm font-light text-gray-500 dark:text-gray-400">
-                  Already have an account?{" "}
-                  <Link
-                    href="/auth/signin"
-                    className="font-medium text-indigo-600 hover:underline dark:text-indigo-500"
-                  >
-                    Login here
-                  </Link>
-                </p>
-              </form>
-            </div>
-          </div>
+          <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
+            Create your account
+          </h2>
+          <p className="mt-2 text-sm text-gray-600">
+            Join our fitness community today
+          </p>
         </div>
-      </section>
+
+        {/* Form Card */}
+        <div className="bg-white py-8 px-6 shadow-xl rounded-2xl border border-gray-200">
+          {/* Error/Success Messages */}
+          {error && (
+            <div className="mb-4 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg flex items-center">
+              <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+              {error}
+            </div>
+          )}
+
+          {success && (
+            <div className="mb-4 p-4 bg-green-50 border border-green-200 text-green-700 rounded-lg flex items-center">
+              <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+              {success}
+            </div>
+          )}
+
+          <form className="space-y-6" onSubmit={handleSubmit}>
+            {/* Name Field */}
+            <div className="relative">
+              <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+                Full Name
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <FaUser className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  type="text"
+                  name="name"
+                  id="name"
+                  className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                  placeholder="John Doe"
+                  required
+                  disabled={loading}
+                />
+              </div>
+            </div>
+
+            {/* Email Field */}
+            <div className="relative">
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                Email Address
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <FaEnvelope className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  type="email"
+                  name="email"
+                  id="email"
+                  className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                  placeholder="name@company.com"
+                  required
+                  disabled={loading}
+                />
+              </div>
+            </div>
+
+            {/* Password Field */}
+            <div className="relative">
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+                Password
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <FaLock className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  type={showPassword ? "text" : "password"}
+                  name="password"
+                  id="password"
+                  className="block w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                  placeholder="••••••••"
+                  required
+                  minLength={6}
+                  disabled={loading}
+                />
+                <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="text-gray-400 hover:text-gray-600 focus:outline-none"
+                  >
+                    {showPassword ? <FaEyeSlash className="h-5 w-5" /> : <FaEye className="h-5 w-5" />}
+                  </button>
+                </div>
+              </div>
+              <p className="text-xs text-gray-500 mt-1">Minimum 6 characters</p>
+            </div>
+
+            {/* Confirm Password Field */}
+            <div className="relative">
+              <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-700 mb-1">
+                Confirm Password
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <FaLock className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  type="password"
+                  name="confirm-password"
+                  id="confirm-password"
+                  className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                  placeholder="••••••••"
+                  required
+                  disabled={loading}
+                />
+              </div>
+            </div>
+
+            {/* Role Selection */}
+            <div className="space-y-3">
+              <p className="text-sm font-medium text-gray-700 text-center">
+                How will you use GymTracker?
+              </p>
+              <div className="grid grid-cols-1 gap-3">
+                <label className={`relative flex cursor-pointer rounded-lg border bg-white p-4 shadow-sm focus:outline-none ${
+                  selectedRole === 'user' ? 'border-indigo-600 ring-2 ring-indigo-600' : 'border-gray-300'
+                }`}>
+                  <input
+                    type="radio"
+                    name="role"
+                    value="user"
+                    className="sr-only"
+                    required
+                    disabled={loading}
+                    defaultChecked
+                    onChange={() => setSelectedRole('user')}
+                  />
+                  <span className="flex flex-1">
+                    <span className="flex flex-col">
+                      <span className="flex items-center text-sm font-medium text-gray-900">
+                        <FaUser className="mr-2 h-5 w-5 text-indigo-600" />
+                        Client / Trainee
+                      </span>
+                      <span className="mt-1 text-sm text-gray-500">
+                        Track workouts, get personalized coaching, and achieve your fitness goals
+                      </span>
+                    </span>
+                  </span>
+                  <svg className={`h-5 w-5 text-indigo-600 ${selectedRole === 'user' ? '' : 'invisible'}`} viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                </label>
+
+                <label className={`relative flex cursor-pointer rounded-lg border bg-white p-4 shadow-sm focus:outline-none ${
+                  selectedRole === 'coach' ? 'border-indigo-600 ring-2 ring-indigo-600' : 'border-gray-300'
+                }`}>
+                  <input
+                    type="radio"
+                    name="role"
+                    value="coach"
+                    className="sr-only"
+                    disabled={loading}
+                    onChange={() => setSelectedRole('coach')}
+                  />
+                  <span className="flex flex-1">
+                    <span className="flex flex-col">
+                      <span className="flex items-center text-sm font-medium text-gray-900">
+                        <FaDumbbell className="mr-2 h-5 w-5 text-indigo-600" />
+                        Coach / Trainer
+                      </span>
+                      <span className="mt-1 text-sm text-gray-500">
+                        Create workout plans, manage clients, and provide personalized coaching
+                      </span>
+                    </span>
+                  </span>
+                  <svg className={`h-5 w-5 text-indigo-600 ${selectedRole === 'coach' ? '' : 'invisible'}`} viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                </label>
+              </div>
+            </div>
+
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {loading ? (
+                <div className="flex items-center">
+                  <svg className="animate-spin h-5 w-5 mr-2 text-white" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  Creating Account...
+                </div>
+              ) : (
+                "Create Account"
+              )}
+            </button>
+
+            {/* Login Link */}
+            <div className="text-center">
+              <p className="text-sm text-gray-600">
+                Already have an account?{" "}
+                <Link href="/auth/signin" className="font-medium text-indigo-600 hover:text-indigo-500 transition-colors">
+                  Sign in here
+                </Link>
+              </p>
+            </div>
+          </form>
+        </div>
+      </div>
     </div>
   );
 };
