@@ -195,9 +195,9 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 ## Support
 
 - 📧 **Email**: support@gymtracker.com
-- 🐛 **Issues**: [GitHub Issues](https://github.com/yourusername/gymtracker/issues)
-- 📖 **Documentation**: [Wiki](https://github.com/yourusername/gymtracker/wiki)
-
+https://github.com/Adib-96/gym_app/wiki
+- 🐛 **Issues**: [GitHub Issues](https://github.com/Adib-96/gym_app/issues)
+- 📖 **Documentation**: [Wiki](https://github.com/Adib-96/gym_app/wiki)
 ---
 
 **GymTracker** - Transform your fitness journey with personalized training and expert guidance.
