@@ -1,18 +1,25 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  images : {
+  experimental: {
+    globalNotFound: true
+  },
+  compiler: {
+    removeConsole: true
+  },
+  images: {
     remotePatterns: [
       {
-        protocol:"https",
+        protocol: "https",
         hostname: "images.unsplash.com",
         port: '',           // usually empty
         pathname: '/**',    // allow all paths from Unsplash
       },
-      {protocol:"https",
+      {
+        protocol: "https",
         hostname: "raw.githubusercontent.com",
-        port: '',           
-        pathname: '/**',    
+        port: '',
+        pathname: '/**',
       }
     ]
 
