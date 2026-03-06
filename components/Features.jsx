@@ -59,24 +59,24 @@ const Features = () => {
   ];
 
   return (
-    <section className="py-20 bg-gray-50" id="features">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <section className="py-12 sm:py-16 md:py-20 bg-gray-50" id="features">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
         <div className="text-center">
-          <h2 className="text-3xl font-extrabold text-gray-900 sm:text-4xl">
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-900 md:text-4xl">
             Everything you need to succeed
           </h2>
-          <p className="mt-4 text-lg text-gray-600 max-w-2xl mx-auto">
+          <p className="mt-3 sm:mt-4 text-sm sm:text-base md:text-lg text-gray-600 max-w-2xl mx-auto px-2">
             Our comprehensive platform provides all the tools and support you need to achieve your fitness goals.
           </p>
         </div>
-        <div className="mt-16 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="mt-12 sm:mt-14 md:mt-16 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 md:gap-8">
           {features.map((feature, index) => (
-            <div key={index} className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300">
-              <div className="flex items-center justify-center w-12 h-12 bg-indigo-100 rounded-lg mb-4">
+            <div key={index} className="bg-white p-4 sm:p-5 md:p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300">
+              <div className="flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 bg-indigo-100 rounded-lg mb-3 sm:mb-4">
                 {feature.icon}
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">{feature.title}</h3>
-              <p className="text-gray-600">{feature.description}</p>
+              <h3 className="text-base sm:text-lg md:text-xl font-semibold text-gray-900 mb-2">{feature.title}</h3>
+              <p className="text-sm sm:text-base text-gray-600">{feature.description}</p>
             </div>
           ))}
         </div>
