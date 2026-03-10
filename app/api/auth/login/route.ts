@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
-import { query } from '@/lib/db';
+import supabase from '@/lib/supabase-server';
 import jwt from 'jsonwebtoken';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { email, password } = body;
-
+    console.log('🔐 Login attempt:', { email, password });
 
     // Validation
     if (!email || !password) {
@@ -18,20 +18,24 @@ export async function POST(request: NextRequest) {
     }
 
     // Find user
-    const userResult = await query(
-      `SELECT id, name, email, password_hash, role, created_at 
-       FROM users WHERE email = $1`,
-      [email]
-    );
+    const { data: users, error: userError } = await supabase
+      .from('users')
+      .select('id, name, email, password_hash, role, created_at')
+      .eq('email', email)
+      .maybeSingle();
 
-    if (userResult.rows.length === 0) {
+    if (userError) {
+      throw userError;
+    }
+
+    if (!users) {
       return NextResponse.json(
         { error: 'Invalid email or password' },
         { status: 401 }
       );
     }
 
-    const user = userResult.rows[0];
+    const user = users;
     // Check password
     const passwordMatch = await bcrypt.compare(password, user.password_hash);
 
@@ -59,22 +63,33 @@ export async function POST(request: NextRequest) {
     let coachId = null;
 
     if (user.role === 'user') {
-      const clientResult = await query(
-        'SELECT id as client_id, coach_id FROM clients WHERE user_id = $1',
-        [user.id]
-      );
+      const { data: clientData, error: clientError } = await supabase
+        .from('clients')
+        .select('id, coach_id')
+        .eq('user_id', user.id)
+        .maybeSingle();
 
-      if (clientResult.rows.length > 0) {
-        clientId = clientResult.rows[0].client_id;
-        coachId = clientResult.rows[0].coach_id;
+      if (clientError) {
+        throw clientError;
+      }
+
+      if (clientData) {
+        clientId = clientData.id;
+        coachId = clientData.coach_id;
       }
     } else if (user.role === 'coach') {
-      const coachResult = await query(
-        'SELECT id as coach_id FROM coaches WHERE user_id = $1',
-        [user.id]
-      );
-      if (coachResult.rows.length > 0) {
-        coachId = coachResult.rows[0].coach_id;
+      const { data: coachData, error: coachError } = await supabase
+        .from('coaches')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (coachError) {
+        throw coachError;
+      }
+
+      if (coachData) {
+        coachId = coachData.id;
       }
     } else if (user.role === 'admin') {
       console.log('👑 Admin login:', user.id);

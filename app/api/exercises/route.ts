@@ -1,7 +1,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/auth';
-import { query } from '@/lib/db';
+import supabase from '@/lib/supabase-server';
 
 export async function GET(request: NextRequest) {
     const { user, error } = await authenticateRequest(request);
@@ -14,15 +14,18 @@ export async function GET(request: NextRequest) {
     }
 
     try {
-        const result = await query(
-            `SELECT id, name, muscle_group, description 
-       FROM exercises 
-       ORDER BY name`
-        );
+        const { data: exercises, error: supabaseError } = await supabase
+            .from('exercises')
+            .select('id, name, muscle_group, description')
+            .order('name');
+
+        if (supabaseError) {
+            throw supabaseError;
+        }
 
         return NextResponse.json({
             success: true,
-            exercises: result.rows
+            exercises: exercises || []
         });
 
     } catch (error) {

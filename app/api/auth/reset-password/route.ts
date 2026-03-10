@@ -1,7 +1,7 @@
 // app/api/auth/reset-password/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
-import { query } from '@/lib/db';
+import supabase from '@/lib/supabase-server';
 
 export async function POST(request: NextRequest) {
   try {
@@ -23,19 +23,18 @@ export async function POST(request: NextRequest) {
     }
 
     // Find valid token
+    const { data: resetToken, error: selectError } = await supabase
+      .from('password_reset_tokens')
+      .select('*')
+      .eq('token', token)
+      .maybeSingle();
 
-    // const resetToken = await prisma.passwordResetToken.findUnique({
-    //   where: { token },
-    //   include: { user: true },
-    // });
-    const result = await query(
-      'SELECT * FROM password_reset_tokens WHERE token = $1',
-      [token]
-    );
-    const resetToken = result.rows[0];
+    if (selectError) {
+      throw selectError;
+    }
 
     // Check if token exists and is not expired
-    if (!resetToken || resetToken.expires_at < new Date()) {
+    if (!resetToken || new Date(resetToken.expires_at) < new Date()) {
       return NextResponse.json(
         { error: 'Invalid or expired token' },
         { status: 400 }
@@ -46,23 +45,31 @@ export async function POST(request: NextRequest) {
     const hashedPassword = await bcrypt.hash(password, 12);
 
     // Update user password
+    const { error: updateError } = await supabase
+      .from('users')
+      .update({ password_hash: hashedPassword })
+      .eq('id', resetToken.user_id);
 
-    await query(
-      'UPDATE users SET password_hash = $1 WHERE id = $2',
-      [hashedPassword, resetToken.user_id]
-    );
+    if (updateError) {
+      throw updateError;
+    }
 
+    // Delete used token
+    const { error: deleteError } = await supabase
+      .from('password_reset_tokens')
+      .delete()
+      .eq('id', resetToken.id);
 
-    await query(
-      'DELETE FROM password_reset_tokens WHERE id = $1',
-      [resetToken.id]
-    );
+    if (deleteError) {
+      throw deleteError;
+    }
 
     // Optional: Delete all expired tokens for this user
-    await query(
-      'DELETE FROM password_reset_tokens WHERE user_id = $1 AND expires_at < $2',
-      [resetToken.user_id, new Date()]
-    );
+    await supabase
+      .from('password_reset_tokens')
+      .delete()
+      .eq('user_id', resetToken.user_id)
+      .lt('expires_at', new Date().toISOString());
 
     return NextResponse.json(
       { message: 'Password reset successful' },

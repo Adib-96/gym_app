@@ -110,7 +110,14 @@ export default function ClientDashboard() {
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim() || !stats?.coach?.userId || sendingMessage) return;
+    
+    // Check if we have a coach
+    if (!stats || !stats.coach || !stats.coach.userId) {
+      alert('You need to be assigned to a coach before sending messages.');
+      return;
+    }
+    
+    if (!newMessage.trim() || sendingMessage) return;
 
     try {
       setSendingMessage(true);
@@ -123,12 +130,23 @@ export default function ClientDashboard() {
         }),
       });
 
-      if (response.ok) {
+      const responseData = await response.json();
+      
+      if (!response.ok) {
+        console.error('Message send error:', responseData);
+        alert(`Failed to send message: ${responseData.error || 'Unknown error'}`);
+        return;
+      }
+
+      if (responseData.success) {
         setNewMessage('');
         fetchMessages();
+      } else {
+        alert('Failed to send message');
       }
     } catch (error) {
       console.error('Error sending message:', error);
+      alert('Error sending message. Please try again.');
     } finally {
       setSendingMessage(false);
     }

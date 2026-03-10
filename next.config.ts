@@ -4,9 +4,9 @@ const nextConfig: NextConfig = {
   experimental: {
     globalNotFound: true
   },
-  compiler: {
-    removeConsole: true
-  },
+  //compiler: {
+   // removeConsole: true
+  //},
   images: {
     remotePatterns: [
       {

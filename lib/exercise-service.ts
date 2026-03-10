@@ -1,4 +1,4 @@
-import { query } from "./db";
+import supabase from "./supabase-server";
 
 interface Muscle {
   id: string;
@@ -64,27 +64,31 @@ async function fetchExercises(): Promise<Exercise[]> {
     exerciseCode: exercise.code || exercise.name.toLowerCase().replace(/\s+/g, '_').replace(/[^\w\s]/gi, '')
   }));
 
-
-  // Updated insert query to include exercise_id column
-  const insertQuery = `
-    INSERT INTO exercises (id, name, description, muscle_group, equipment, exercise_id)
-    VALUES ($1, $2, $3, $4, $5, $6) 
-    ON CONFLICT (id) DO NOTHING
-  `;
-
   for (const exercise of exercises) {
     try {
-      await query(insertQuery, [
-        exercise.id,
-        exercise.name,
-        exercise.description,
-        exercise.muscleGroup,
-        JSON.stringify(exercise.equipment),
-        exercise.exerciseCode // This is the exercise_id column
-      ]);
+      const { error } = await supabase
+        .from('exercises')
+        .upsert([{
+          id: exercise.id,
+          name: exercise.name,
+          description: exercise.description,
+          muscle_group: exercise.muscleGroup,
+          equipment: exercise.equipment,
+          exercise_id: exercise.exerciseCode
+        }], {
+          onConflict: 'id'
+        });
+
+      if (error) {
+        console.error(`Error inserting exercise ${exercise.name}:`, error);
+        console.log('Problematic exercise data:', {
+          id: exercise.id,
+          name: exercise.name,
+          exerciseCode: exercise.exerciseCode
+        });
+      }
     } catch (error) {
       console.error(`Error inserting exercise ${exercise.name}:`, error);
-      // If you want to see which values are causing the issue:
       console.log('Problematic exercise data:', {
         id: exercise.id,
         name: exercise.name,

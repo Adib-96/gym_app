@@ -1,7 +1,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/auth';
-import { query } from '@/lib/db';
+import supabase from '@/lib/supabase-server';
 
 export async function GET(request: NextRequest) {
     const { user, error } = await authenticateRequest(request);
@@ -21,58 +21,77 @@ export async function GET(request: NextRequest) {
     }
 
     try {
-        // 1. Total Clients
-        const clientsRes = await query(
-            `SELECT count(*) FROM clients WHERE coach_id = $1`,
-            [user.userId]
-        );
+        // 1. Get all client IDs for this coach
+        const { data: coachClients, error: clientsError } = await supabase
+            .from('clients')
+            .select('id')
+            .eq('coach_id', user.userId);
+
+        if (clientsError) {
+            throw clientsError;
+        }
+
+        const clientIds = coachClients?.map(c => c.id) || [];
+        const totalClients = clientIds.length;
 
         // 2. Total Active Clients
-        const activeClientsRes = await query(
-            `SELECT count(*) FROM clients WHERE coach_id = $1 AND status = 'Active'`,
-            [user.userId]
-        );
+        const { data: activeClients, error: activeClientsError } = await supabase
+            .from('clients')
+            .select('id')
+            .eq('coach_id', user.userId)
+            .eq('status', 'Active');
 
-        // 3. active workouts (assigned but not completed? or status='active'?)
-        // Let's assume 'status' column in workouts table has 'pending', 'completed', etc.
-        // We'll count workouts that are 'pending' or 'active' for clients of this coach.
-        const activeWorkoutsRes = await query(
-            `SELECT count(*) 
-         FROM workouts w
-         JOIN clients c ON w.client_id = c.id
-         WHERE c.coach_id = $1 AND w.status IN ('pending', 'active')`,
-            [user.userId]
-        );
+        if (activeClientsError) {
+            throw activeClientsError;
+        }
 
-        // 4. Unread Messages 
-        const unreadMessagesRes = await query(
-            `SELECT count(*) FROM messages WHERE receiver_id = $1 AND is_read = FALSE`,
-            [user.userId]
-        );
+        const totalActiveClients = activeClients?.length || 0;
 
-        // 5. Completion Rate (Simplified: Completed / Total Workouts for these clients)
-        // Avoid division by zero
-        const workoutStatsRes = await query(
-            `SELECT 
-            COUNT(*) as total,
-            COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed
-         FROM workouts w
-         JOIN clients c ON w.client_id = c.id
-         WHERE c.coach_id = $1`,
-            [user.userId]
-        );
+        // 3. Active workouts (assume client_id is the user_id, not the clients table id)
+        const { data: activeWorkouts, error: activeWorkoutsError } = await supabase
+            .from('workouts')
+            .select('id')
+            .in('status', ['pending', 'active']);
 
-        const totalWorkouts = parseInt(workoutStatsRes.rows[0].total) || 0;
-        const completedWorkouts = parseInt(workoutStatsRes.rows[0].completed) || 0;
+        if (activeWorkoutsError) {
+            throw activeWorkoutsError;
+        }
+
+        const totalActiveWorkouts = activeWorkouts?.length || 0;
+
+        // 4. Unread Messages
+        const { data: unreadMessages, error: unreadError } = await supabase
+            .from('messages')
+            .select('id')
+            .eq('receiver_id', user.userId)
+            .eq('is_read', false);
+
+        if (unreadError) {
+            throw unreadError;
+        }
+
+        const totalUnreadMessages = unreadMessages?.length || 0;
+
+        // 5. Completion Rate - fetch all workouts for client users and check status
+        const { data: allWorkouts, error: workoutsError } = await supabase
+            .from('workouts')
+            .select('status');
+
+        if (workoutsError) {
+            throw workoutsError;
+        }
+
+        const totalWorkouts = allWorkouts?.length || 0;
+        const completedWorkouts = allWorkouts?.filter(w => w.status === 'completed').length || 0;
         const completionRate = totalWorkouts > 0 ? Math.round((completedWorkouts / totalWorkouts) * 100) : 0;
 
         return NextResponse.json({
             success: true,
             stats: {
-                totalClients: parseInt(clientsRes.rows[0].count),
-                activeClients: parseInt(activeClientsRes.rows[0].count),
-                activeWorkouts: parseInt(activeWorkoutsRes.rows[0].count),
-                unreadMessages: parseInt(unreadMessagesRes.rows[0].count),
+                totalClients,
+                activeClients: totalActiveClients,
+                activeWorkouts: totalActiveWorkouts,
+                unreadMessages: totalUnreadMessages,
                 completionRate: completionRate
             }
         });
