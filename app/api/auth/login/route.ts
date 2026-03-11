@@ -2,12 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import supabase from '@/lib/supabase-server';
 import jwt from 'jsonwebtoken';
+import logger from "@/logger";
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { email, password } = body;
-    console.log('🔐 Login attempt:', { email, password });
+    logger.info('🔐 Login attempt:', { email, password });
 
     // Validation
     if (!email || !password) {

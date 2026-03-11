@@ -65,7 +65,6 @@ export async function POST(request: NextRequest) {
       ])
       .select('id, name, email, role, created_at')
       .single();
-
     if (insertError) {
       throw insertError;
     }
