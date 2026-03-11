@@ -1,7 +1,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/auth';
-import pool from '@/lib/db';
+import supabase from '@/lib/supabase-server';
 
 export async function POST(request: NextRequest) {
     const { user, error } = await authenticateRequest(request);
@@ -20,9 +20,6 @@ export async function POST(request: NextRequest) {
         );
     }
 
-    // Use a dedicated client for transaction
-    const client = await pool.connect();
-
     try {
         const body = await request.json();
         const { clientId, name, description, scheduledDate, exercises } = body;
@@ -35,57 +32,145 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        await client.query('BEGIN');
+        let validClientId = '';
+        let actualClientId = '';
 
-        // Verify client belongs to coach
-        const clientCheck = await client.query(
-            `SELECT user_id FROM clients WHERE id = $1 AND coach_id = $2`,
-            [clientId, user.userId]
-        );
+        // Handle temporary client IDs (format: temp-{user_id})
+        if (clientId.startsWith('temp-')) {
+            const userId = clientId.replace('temp-', '');
+            
+            // Check if client record already exists
+            const { data: existingClient, error: existingError } = await supabase
+                .from('clients')
+                .select('id, user_id')
+                .eq('user_id', userId)
+                .maybeSingle();
 
-        if (clientCheck.rows.length === 0) {
-            await client.query('ROLLBACK');
-            return NextResponse.json(
-                { error: 'Client not found or not assigned to you' },
-                { status: 404 }
-            );
+            if (existingError) {
+                throw existingError;
+            }
+
+            if (existingClient) {
+                // Client already exists, verify it's assigned to the coach
+                const { data: assigned, error: assignError } = await supabase
+                    .from('clients')
+                    .select('id, user_id')
+                    .eq('id', existingClient.id)
+                    .eq('coach_id', user.userId)
+                    .maybeSingle();
+
+                if (assignError) {
+                    throw assignError;
+                }
+
+                if (!assigned) {
+                    return NextResponse.json(
+                        { error: 'Client not assigned to you' },
+                        { status: 403 }
+                    );
+                }
+
+                actualClientId = existingClient.id;
+                validClientId = existingClient.user_id;
+            } else {
+                // Create new client record first
+                const { data: newClient, error: createError } = await supabase
+                    .from('clients')
+                    .insert([{
+                        user_id: userId,
+                        coach_id: user.userId,
+                        status: 'Active'
+                    }])
+                    .select('id')
+                    .single();
+
+                if (createError) {
+                    throw createError;
+                }
+
+                actualClientId = newClient.id;
+                validClientId = userId;
+            }
+        } else {
+            // Existing client ID - verify it belongs to coach
+            const { data: clientCheck, error: checkError } = await supabase
+                .from('clients')
+                .select('id, user_id')
+                .eq('id', clientId)
+                .eq('coach_id', user.userId)
+                .maybeSingle();
+
+            if (checkError) {
+                throw checkError;
+            }
+
+            if (!clientCheck) {
+                return NextResponse.json(
+                    { error: 'Client not found or not assigned to you' },
+                    { status: 404 }
+                );
+            }
+
+            actualClientId = clientCheck.id;
+            validClientId = clientCheck.user_id;
         }
 
-        const validClientId = clientCheck.rows[0].user_id;
+        // Validate exercises
+        const exercisesWithValidation = exercises.map(ex => {
+            if (!ex.exerciseId || !ex.sets || !ex.reps) {
+                throw new Error('Each exercise must have ID, sets, and reps');
+            }
+            return ex;
+        });
+
+        // Calculate total duration
+        let totalDuration = 0;
+        for (const ex of exercisesWithValidation) {
+            const estimatedDuration = ex.sets * 3; // 2 min per set + 1 min rest
+            totalDuration += estimatedDuration;
+        }
 
         // Create Workout
-        const workoutResult = await client.query(
-            `INSERT INTO workouts (client_id, name, description, status, assigned_date, scheduled_date, total_duration)
-       VALUES ($1, $2, $3, 'pending', NOW(), $4, 0)
-       RETURNING id`,
-            [validClientId, name, description || '', scheduledDate || null]
-        );
+        const { data: workout, error: workoutError } = await supabase
+            .from('workouts')
+            .insert([{
+                client_id: validClientId,
+                name,
+                description: description || '',
+                status: 'pending',
+                assigned_date: new Date().toISOString(),
+                scheduled_date: scheduledDate || null,
+                total_duration: totalDuration
+            }])
+            .select('id')
+            .single();
 
-        const workoutId = workoutResult.rows[0].id;
-        let totalDuration = 0;
-
-        // Insert Exercises
-        for (let i = 0; i < exercises.length; i++) {
-            const ex = exercises[i];
-
-            // Calculate estimated duration (2 min per set + 1 min rest)
-            const estimatedDuration = (ex.sets * 3);
-            totalDuration += estimatedDuration;
-
-            await client.query(
-                `INSERT INTO workout_exercises (workout_id, exercise_id, sets, reps, weight, order_index, notes)
-             VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-                [workoutId, ex.exerciseId, ex.sets, ex.reps, ex.weight || 0, i, ex.notes || '']
-            );
+        if (workoutError) {
+            console.error('Workout creation error:', workoutError);
+            throw workoutError;
         }
 
-        // Update total duration
-        await client.query(
-            `UPDATE workouts SET total_duration = $1 WHERE id = $2`,
-            [totalDuration, workoutId]
-        );
+        const workoutId = workout.id;
 
-        await client.query('COMMIT');
+        // Insert Exercises
+        const exerciseInserts = exercisesWithValidation.map((ex, index) => ({
+            workout_id: workoutId,
+            exercise_id: ex.exerciseId,
+            sets: ex.sets,
+            reps: ex.reps,
+            weight: ex.weight || 0,
+            order_index: index,
+            notes: ex.notes || ''
+        }));
+
+        const { error: exercisesError } = await supabase
+            .from('workout_exercises')
+            .insert(exerciseInserts);
+
+        if (exercisesError) {
+            console.error('Exercises insertion error:', exercisesError);
+            throw exercisesError;
+        }
 
         return NextResponse.json({
             success: true,
@@ -93,17 +178,21 @@ export async function POST(request: NextRequest) {
         });
 
     } catch (error) {
-        await client.query('ROLLBACK');
         console.error('Error creating workout:', error);
-        if (typeof error === 'object' && error !== null && 'detail' in error) {
-            console.error('Error detail:', (error as { detail?: string }).detail);
+        
+        // Get detailed error message
+        let errorMessage = 'Failed to create workout';
+        if (error instanceof Error) {
+            errorMessage += ': ' + error.message;
+        } else if (typeof error === 'object' && error !== null && 'message' in error) {
+            errorMessage += ': ' + (error as any).message;
+        } else if (typeof error === 'string') {
+            errorMessage += ': ' + error;
         }
 
         return NextResponse.json(
-            { error: 'Failed to create workout: ' + (error instanceof Error ? error.message : String(error)) },
+            { error: errorMessage },
             { status: 500 }
         );
-    } finally {
-        client.release();
     }
 }

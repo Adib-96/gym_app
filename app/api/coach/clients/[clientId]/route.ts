@@ -1,7 +1,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/auth';
-import { query } from '@/lib/db';
+import supabase from '@/lib/supabase-server';
 import { getClientStats } from '@/lib/workouts-service';
 
 export async function GET(
@@ -28,37 +28,52 @@ export async function GET(
 
     try {
         // Get client details
-        const clientResult = await query(
-            `SELECT 
-        c.id, 
-        u.name, 
-        u.email, 
-        c.date_of_birth, 
-        c.gender,
-        c.height,
-        c.weight,
-        c.fitness_level,
-        c.goals,
-        c.status,
-        c.created_at,
-        c.user_id
-       FROM clients c
-       JOIN users u ON c.user_id = u.id
-       WHERE c.id = $1 AND c.coach_id = $2`,
-            [clientId, user.userId]
-        );
+        const { data: clientData, error: supabaseError } = await supabase
+            .from('clients')
+            .select('id, user_id, date_of_birth, gender, height, weight, fitness_level, goals, status, created_at')
+            .eq('id', clientId)
+            .eq('coach_id', user.userId)
+            .maybeSingle();
 
-        if (clientResult.rows.length === 0) {
+        if (supabaseError) {
+            throw supabaseError;
+        }
+
+        if (!clientData) {
             return NextResponse.json(
                 { error: 'Client not found or not assigned to you' },
                 { status: 404 }
             );
         }
 
-        const client = clientResult.rows[0];
+        // Fetch user details separately
+        const { data: userData, error: userError } = await supabase
+            .from('users')
+            .select('id, name, email')
+            .eq('id', clientData.user_id)
+            .maybeSingle();
 
-        // Get stats
-        const stats = await getClientStats(client.id);
+        if (userError) {
+            throw userError;
+        }
+
+        const client = {
+            id: clientData.id,
+            name: userData?.name || 'Unknown',
+            email: userData?.email || 'Unknown',
+            date_of_birth: clientData.date_of_birth,
+            gender: clientData.gender,
+            height: clientData.height,
+            weight: clientData.weight,
+            fitness_level: clientData.fitness_level,
+            goals: clientData.goals,
+            status: clientData.status,
+            created_at: clientData.created_at,
+            user_id: clientData.user_id
+        };
+
+        // Get stats - pass the user_id, not the client id
+        const stats = await getClientStats(clientData.user_id);
 
         return NextResponse.json({
             success: true,
@@ -75,6 +90,7 @@ export async function GET(
             { status: 500 }
         );
     }
+}
 }
 
 export async function PUT(
@@ -103,12 +119,18 @@ export async function PUT(
         const { height, weight, fitness_level, goals, status } = body;
 
         // Verify ownership
-        const checkResult = await query(
-            `SELECT id FROM clients WHERE id = $1 AND coach_id = $2`,
-            [clientId, user.userId]
-        );
+        const { data: checkResult, error: checkError } = await supabase
+            .from('clients')
+            .select('id')
+            .eq('id', clientId)
+            .eq('coach_id', user.userId)
+            .maybeSingle();
 
-        if (checkResult.rows.length === 0) {
+        if (checkError) {
+            throw checkError;
+        }
+
+        if (!checkResult) {
             return NextResponse.json(
                 { error: 'Client not found or not assigned to you' },
                 { status: 404 }
@@ -116,23 +138,26 @@ export async function PUT(
         }
 
         // Update client details
-        const updateResult = await query(
-            `UPDATE clients 
-       SET 
-        height = COALESCE($1, height),
-        weight = COALESCE($2, weight),
-        fitness_level = COALESCE($3, fitness_level),
-        goals = COALESCE($4, goals),
-        status = COALESCE($5, status),
-        updated_at = NOW()
-       WHERE id = $6
-       RETURNING *`,
-            [height, weight, fitness_level, goals, status, clientId]
-        );
+        const { data: updatedClient, error: updateError } = await supabase
+            .from('clients')
+            .update({
+                height: height !== undefined ? height : undefined,
+                weight: weight !== undefined ? weight : undefined,
+                fitness_level: fitness_level !== undefined ? fitness_level : undefined,
+                goals: goals !== undefined ? goals : undefined,
+                status: status !== undefined ? status : undefined
+            })
+            .eq('id', clientId)
+            .select('*')
+            .single();
+
+        if (updateError) {
+            throw updateError;
+        }
 
         return NextResponse.json({
             success: true,
-            client: updateResult.rows[0]
+            client: updatedClient
         });
 
     } catch (error) {

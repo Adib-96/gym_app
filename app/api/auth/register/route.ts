@@ -7,7 +7,6 @@ export async function POST(request: NextRequest) {
     // 1. Get data from frontend
     const body = await request.json();
     const { name, email, password, role } = body;
-
     console.log('📝 Registration attempt:', { name, email, role });
 
     // 2. Basic validation
@@ -66,7 +65,6 @@ export async function POST(request: NextRequest) {
       ])
       .select('id, name, email, role, created_at')
       .single();
-
     if (insertError) {
       throw insertError;
     }

@@ -1,7 +1,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/auth';
-import { query } from '@/lib/db';
+import supabase from '@/lib/supabase-server';
 
 export async function GET(request: NextRequest) {
     const { user, error } = await authenticateRequest(request);
@@ -11,31 +11,63 @@ export async function GET(request: NextRequest) {
     }
 
     // Get messages where user is sender OR receiver
-    // We might want to filter by "conversation" with a specific other user, but for now typical dashboard shows "Recent Messages"
-    // Let's return the last 20 messages involving this user.
     try {
-        const res = await query(
-            `SELECT 
-        m.id, 
-        m.content, 
-        m.created_at, 
-        m.is_read,
-        sender.name as sender_name,
-        receiver.name as receiver_name,
-        m.sender_id,
-        m.receiver_id
-       FROM messages m
-       JOIN users sender ON m.sender_id = sender.id
-       JOIN users receiver ON m.receiver_id = receiver.id
-       WHERE m.sender_id = $1 OR m.receiver_id = $1
-       ORDER BY m.created_at DESC
-       LIMIT 20`,
-            [user.userId]
-        );
+        const { data: messages, error: supabaseError } = await supabase
+            .from('messages')
+            .select(`
+                id,
+                content,
+                created_at,
+                is_read,
+                sender_id,
+                receiver_id
+            `)
+            .or(`sender_id.eq.${user.userId},receiver_id.eq.${user.userId}`)
+            .order('created_at', { ascending: false })
+            .limit(20);
+
+        if (supabaseError) {
+            throw supabaseError;
+        }
+
+        // Fetch user details for senders and receivers
+        const userIds = new Set<string>();
+        messages?.forEach(msg => {
+            userIds.add(msg.sender_id);
+            userIds.add(msg.receiver_id);
+        });
+
+        let userMap: { [key: string]: { name: string } } = {};
+        if (userIds.size > 0) {
+            const { data: users, error: usersError } = await supabase
+                .from('users')
+                .select('id, name')
+                .in('id', Array.from(userIds));
+
+            if (usersError) {
+                throw usersError;
+            }
+
+            userMap = (users || []).reduce((map, u) => {
+                map[u.id] = { name: u.name };
+                return map;
+            }, {});
+        }
+
+        const formattedMessages = messages?.map(msg => ({
+            id: msg.id,
+            content: msg.content,
+            created_at: msg.created_at,
+            is_read: msg.is_read,
+            sender_id: msg.sender_id,
+            receiver_id: msg.receiver_id,
+            sender_name: userMap[msg.sender_id]?.name || 'Unknown',
+            receiver_name: userMap[msg.receiver_id]?.name || 'Unknown'
+        })) || [];
 
         return NextResponse.json({
             success: true,
-            messages: res.rows
+            messages: formattedMessages
         });
     } catch (error) {
         console.error('Error fetching messages:', error);
@@ -58,10 +90,17 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
         }
 
-        await query(
-            `INSERT INTO messages (sender_id, receiver_id, content) VALUES ($1, $2, $3)`,
-            [user.userId, receiverId, content]
-        );
+        const { error: insertError } = await supabase
+            .from('messages')
+            .insert([{
+                sender_id: user.userId,
+                receiver_id: receiverId,
+                content
+            }]);
+
+        if (insertError) {
+            throw insertError;
+        }
 
         return NextResponse.json({ success: true });
     } catch (error) {
