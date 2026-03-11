@@ -1,4 +1,4 @@
-import { query } from './db';
+import supabase from './supabase-server';
 
 // Sample function to seed workout data for testing
 export async function seedWorkoutData(clientId: string) {
@@ -23,22 +23,25 @@ export async function seedWorkoutData(clientId: string) {
   try {
     // Create workouts
     for (const workout of workoutNames) {
-      const result = await query(
-        `INSERT INTO workouts (client_id, name, description, total_duration, status, assigned_date, scheduled_date)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)
-         RETURNING id`,
-        [
-          clientId,
-          workout.name,
-          workout.description,
-          workout.duration,
-          Math.random() > 0.5 ? 'active' : 'pending',
-          new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000), // Random date in past 7 days
-          new Date(Date.now() + Math.random() * 7 * 24 * 60 * 60 * 1000), // Random date in next 7 days
-        ]
-      );
+      const { data: createdWorkout, error: workoutError } = await supabase
+        .from('workouts')
+        .insert([{
+          client_id: clientId,
+          name: workout.name,
+          description: workout.description,
+          total_duration: workout.duration,
+          status: Math.random() > 0.5 ? 'active' : 'pending',
+          assigned_date: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000).toISOString(),
+          scheduled_date: new Date(Date.now() + Math.random() * 7 * 24 * 60 * 60 * 1000).toISOString()
+        }])
+        .select('id')
+        .single();
 
-      const workoutId = result.rows[0].id;
+      if (workoutError) {
+        throw workoutError;
+      }
+
+      const workoutId = createdWorkout.id;
 
       // Add exercises to workout
       const exercisesToAdd = sampleExercises.slice(0, Math.floor(Math.random() * 4) + 3);
@@ -46,17 +49,31 @@ export async function seedWorkoutData(clientId: string) {
       for (let i = 0; i < exercisesToAdd.length; i++) {
         const exercise = exercisesToAdd[i];
         // Get exercise id from exercises table
-        const exerciseResult = await query(
-          `SELECT id FROM exercises WHERE name = $1 LIMIT 1`,
-          [exercise.name]
-        );
+        const { data: exerciseData, error: exerciseError } = await supabase
+          .from('exercises')
+          .select('id')
+          .eq('name', exercise.name)
+          .maybeSingle();
 
-        if (exerciseResult.rows.length > 0) {
-          await query(
-            `INSERT INTO workout_exercises (workout_id, exercise_id, sets, reps, weight, order_index)
-             VALUES ($1, $2, $3, $4, $5, $6)`,
-            [workoutId, exerciseResult.rows[0].id, exercise.sets, exercise.reps, exercise.weight, i]
-          );
+        if (exerciseError) {
+          throw exerciseError;
+        }
+
+        if (exerciseData) {
+          const { error: insertError } = await supabase
+            .from('workout_exercises')
+            .insert([{
+              workout_id: workoutId,
+              exercise_id: exerciseData.id,
+              sets: exercise.sets,
+              reps: exercise.reps,
+              weight: exercise.weight,
+              order_index: i
+            }]);
+
+          if (insertError) {
+            throw insertError;
+          }
         }
       }
     }

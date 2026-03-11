@@ -1,8 +1,8 @@
 // app/api/auth/forgot-password/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { sendPasswordResetEmail } from '@/lib/email';
-import { generateResetToken,calculateExpiryDate } from '@/lib/tokens';
-import { query } from '@/lib/db';
+import { generateResetToken, calculateExpiryDate } from '@/lib/tokens';
+import supabase from '@/lib/supabase-server';
 import { log } from 'console';
 export async function POST(request: NextRequest) {
   try {
@@ -17,8 +17,16 @@ export async function POST(request: NextRequest) {
     }
     // Find user
 
-    const user = await query('SELECT id FROM users WHERE email = $1', [email]);
-    log(user.rows[0].id);
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .select('id')
+      .eq('email', email)
+      .maybeSingle();
+
+    if (userError) {
+      throw userError;
+    }
+
     // For security, don't reveal if user exists
     if (!user) {
       return NextResponse.json(
@@ -32,10 +40,17 @@ export async function POST(request: NextRequest) {
     const expires = calculateExpiryDate();
 
     //! Store token in database 
-    await query(
-      'INSERT INTO password_reset_tokens (id, user_id, token, expires_at) VALUES (gen_random_uuid(), $1, $2, $3)',
-      [user.rows[0].id, token, expires]
-    );
+    const { error: insertError } = await supabase
+      .from('password_reset_tokens')
+      .insert([{
+        user_id: user.id,
+        token,
+        expires_at: expires
+      }]);
+
+    if (insertError) {
+      throw insertError;
+    }
 
     // Send email
     await sendPasswordResetEmail(email, token);

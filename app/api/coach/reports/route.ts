@@ -1,7 +1,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/auth';
-import { query } from '@/lib/db';
+import supabase from '@/lib/supabase-server';
 
 export async function GET(request: NextRequest) {
     const { user, error } = await authenticateRequest(request);
@@ -15,48 +15,96 @@ export async function GET(request: NextRequest) {
     }
 
     try {
-        // 1. Overall Stats for the Coach
-        const overallStatsRes = await query(
-            `SELECT 
-                COUNT(*) as total_assigned,
-                COUNT(CASE WHEN w.status = 'completed' THEN 1 END) as total_completed
-             FROM workouts w
-             JOIN clients c ON w.client_id = c.user_id
-             WHERE c.coach_id = $1`,
-            [user.userId]
-        );
+        // Get all clients for this coach
+        const { data: clients, error: clientsError } = await supabase
+            .from('clients')
+            .select('id, user_id')
+            .eq('coach_id', user.userId);
 
-        const totalAssigned = parseInt(overallStatsRes.rows[0].total_assigned) || 0;
-        const totalCompleted = parseInt(overallStatsRes.rows[0].total_completed) || 0;
+        if (clientsError) {
+            throw clientsError;
+        }
+
+        const clientIds = clients?.map(c => c.id) || [];
+        const userIds = clients?.map(c => c.user_id) || [];
+
+        // Get all workouts for these clients
+        const { data: allWorkouts, error: workoutsError } = await supabase
+            .from('workouts')
+            .select('id, client_id, status')
+            .in('client_id', userIds);
+
+        if (workoutsError) {
+            throw workoutsError;
+        }
+
+        // Calculate overall stats
+        const totalAssigned = allWorkouts?.length || 0;
+        const totalCompleted = allWorkouts?.filter(w => w.status === 'completed').length || 0;
         const overallCompletionRate = totalAssigned > 0 ? Math.round((totalCompleted / totalAssigned) * 100) : 0;
 
-        // 2. Weekly Stats (Last 7 Days)
-        const weeklyStatsRes = await query(
-            `SELECT COUNT(*) as count 
-             FROM workouts w
-             JOIN clients c ON w.client_id = c.user_id
-             WHERE c.coach_id = $1 AND w.status = 'completed' AND w.updated_at >= NOW() - INTERVAL '7 days'`,
-            [user.userId]
-        );
-        const weeklyCompleted = parseInt(weeklyStatsRes.rows[0].count) || 0;
+        // Get weekly completed workouts
+        const { data: weeklyWorkouts, error: weeklyError } = await supabase
+            .from('workouts')
+            .select('id')
+            .in('client_id', userIds)
+            .eq('status', 'completed')
+            .gte('updated_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
 
-        // 3. Breakdown per Client
-        const clientBreakdownRes = await query(
-            `SELECT 
-                u.name,
-                COUNT(w.id) as assigned,
-                COUNT(CASE WHEN w.status = 'completed' THEN 1 END) as completed,
-                CASE 
-                    WHEN COUNT(w.id) > 0 THEN ROUND((COUNT(CASE WHEN w.status = 'completed' THEN 1 END)::float / COUNT(w.id)::float) * 100)
-                    ELSE 0
-                END as rate
-             FROM clients c
-             JOIN users u ON c.user_id = u.id
-             LEFT JOIN workouts w ON c.user_id = w.client_id
-             WHERE c.coach_id = $1
-             GROUP BY u.name, c.id
-             ORDER BY rate DESC`,
-            [user.userId]
+        if (weeklyError) {
+            throw weeklyError;
+        }
+
+        const weeklyCompleted = weeklyWorkouts?.length || 0;
+
+        // Get breakdown per client
+        const { data: clientsWithUsers, error: detailsError } = await supabase
+            .from('clients')
+            .select('id, user_id')
+            .eq('coach_id', user.userId);
+
+        if (detailsError) {
+            throw detailsError;
+        }
+
+        // Fetch user names separately
+        const clientUserIds = clientsWithUsers?.map(c => c.user_id).filter(Boolean) || [];
+        let userMap: { [key: string]: { name: string } } = {};
+        
+        if (clientUserIds.length > 0) {
+          const { data: users, error: usersError } = await supabase
+            .from('users')
+            .select('id, name')
+            .in('id', clientUserIds);
+
+          if (usersError) {
+            throw usersError;
+          }
+
+          userMap = (users || []).reduce((map, u) => {
+            map[u.id] = { name: u.name };
+            return map;
+          }, {});
+        }
+
+        const clientProgress = await Promise.all(
+            (clientsWithUsers || []).map(async (client) => {
+                const { data: workouts } = await supabase
+                    .from('workouts')
+                    .select('id, status')
+                    .eq('client_id', client.user_id);
+
+                const assigned = workouts?.length || 0;
+                const completed = workouts?.filter(w => w.status === 'completed').length || 0;
+                const rate = assigned > 0 ? Math.round((completed / assigned) * 100) : 0;
+
+                return {
+                    name: userMap[client.user_id]?.name || 'Unknown',
+                    assigned,
+                    completed,
+                    rate
+                };
+            })
         );
 
         return NextResponse.json({
@@ -66,12 +114,7 @@ export async function GET(request: NextRequest) {
                 totalCompleted,
                 weeklyCompleted,
                 completionRate: overallCompletionRate,
-                clientProgress: clientBreakdownRes.rows.map(row => ({
-                    name: row.name,
-                    assigned: parseInt(row.assigned),
-                    completed: parseInt(row.completed),
-                    rate: parseInt(row.rate)
-                }))
+                clientProgress: clientProgress.sort((a, b) => b.rate - a.rate)
             }
         });
 

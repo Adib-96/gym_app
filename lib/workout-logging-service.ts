@@ -1,4 +1,4 @@
-import { query } from './db';
+import supabase from './supabase-server';
 
 export interface WorkoutSession {
   id: string;
@@ -46,19 +46,30 @@ export async function startWorkoutSession(
       throw new Error('clientId and workoutId are required');
     }
 
-    const result = await query(
-      `INSERT INTO workout_sessions (client_id, workout_id, started_at, notes, status)
-       VALUES ($1, $2, NOW(), $3, 'in_progress')
-       RETURNING id, client_id as "clientId", workout_id as "workoutId", 
-                 started_at as "startedAt", notes, status`,
-      [clientId, workoutId, notes]
-    );
+    const { data: session, error } = await supabase
+      .from('workout_sessions')
+      .insert([{
+        client_id: clientId,
+        workout_id: workoutId,
+        started_at: new Date().toISOString(),
+        notes,
+        status: 'in_progress'
+      }])
+      .select('id, client_id, workout_id, started_at, notes, status')
+      .single();
 
-    if (!result.rows[0]) {
-      throw new Error('Failed to create workout session');
+    if (error) {
+      throw error;
     }
 
-    return result.rows[0];
+    return {
+      id: session.id,
+      clientId: session.client_id,
+      workoutId: session.workout_id,
+      startedAt: session.started_at,
+      notes: session.notes,
+      status: session.status
+    };
   } catch (error) {
     console.error('Error starting workout session:', error);
     throw error;
@@ -80,16 +91,34 @@ export async function logExercise(
       throw new Error('sessionId and workoutExerciseId are required');
     }
 
-    const result = await query(
-      `INSERT INTO exercise_logs 
-       (workout_session_id, workout_exercise_id, sets_completed, reps_completed, weight_used, rpe, notes)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
-       RETURNING id, workout_session_id as "workoutSessionId", workout_exercise_id as "workoutExerciseId",
-                 sets_completed as "setsCompleted", reps_completed as "repsCompleted", 
-                 weight_used as "weightUsed", rpe, notes`,
-      [sessionId, workoutExerciseId, setsCompleted, repsCompleted, weightUsed, rpe, notes]
-    );
-    return result.rows[0];
+    const { data: log, error } = await supabase
+      .from('exercise_logs')
+      .insert([{
+        workout_session_id: sessionId,
+        workout_exercise_id: workoutExerciseId,
+        sets_completed: setsCompleted,
+        reps_completed: repsCompleted,
+        weight_used: weightUsed,
+        rpe,
+        notes
+      }])
+      .select('id, workout_session_id, workout_exercise_id, sets_completed, reps_completed, weight_used, rpe, notes')
+      .single();
+
+    if (error) {
+      throw error;
+    }
+
+    return {
+      id: log.id,
+      workoutSessionId: log.workout_session_id,
+      workoutExerciseId: log.workout_exercise_id,
+      setsCompleted: log.sets_completed,
+      repsCompleted: log.reps_completed,
+      weightUsed: log.weight_used,
+      rpe: log.rpe,
+      notes: log.notes
+    };
   } catch (error) {
     console.error('Error logging exercise:', error);
     throw error;
@@ -104,63 +133,89 @@ export async function completeWorkoutSession(
 ): Promise<WorkoutSession> {
   try {
     // 1. Update the session status
-    const result = await query(
-      `UPDATE workout_sessions 
-       SET completed_at = NOW(), duration_minutes = $2, status = 'completed', notes = $3
-       WHERE id = $1
-       RETURNING id, client_id as "clientId", workout_id as "workoutId", 
-                 started_at as "startedAt", completed_at as "completedAt",
-                 duration_minutes as "durationMinutes", notes, status`,
-      [sessionId, durationMinutes, notes]
-    );
+    const { data: session, error: updateError } = await supabase
+      .from('workout_sessions')
+      .update({
+        completed_at: new Date().toISOString(),
+        duration_minutes: durationMinutes,
+        status: 'completed',
+        notes
+      })
+      .eq('id', sessionId)
+      .select('id, client_id, workout_id, started_at, completed_at, duration_minutes, notes, status')
+      .single();
 
-    const session = result.rows[0];
+    if (updateError) {
+      throw updateError;
+    }
+
     if (!session) {
       throw new Error('Session not found or failed to update');
     }
 
-    // 2. Fetch all exercise logs for this session to update progress metrics
-    const logs = await query(
-      `SELECT 
-        we.exercise_id,
-        el.sets_completed,
-        el.reps_completed,
-        el.weight_used,
-        el.notes
-      FROM exercise_logs el
-      JOIN workout_exercises we ON el.workout_exercise_id = we.id
-      WHERE el.workout_session_id = $1`,
-      [sessionId]
-    );
+    // 2. Fetch all exercise logs for this session
+    const { data: logs, error: logsError } = await supabase
+      .from('exercise_logs')
+      .select('id, workout_exercise_id, sets_completed, reps_completed, weight_used, notes')
+      .eq('workout_session_id', sessionId);
 
-    // 3. Insert each log into progress_metrics
-    for (const log of logs.rows) {
-      const totalVolume = (log.sets_completed || 0) * (log.reps_completed || 0) * (log.weight_used || 0);
-
-      await query(
-        `INSERT INTO progress_metrics 
-          (client_id, exercise_id, date, weight_lifted, reps, sets, total_volume, notes)
-         VALUES ($1, $2, CURRENT_DATE, $3, $4, $5, $6, $7)
-         ON CONFLICT ON CONSTRAINT unique_metric 
-         DO UPDATE SET 
-          weight_lifted = EXCLUDED.weight_lifted,
-          reps = EXCLUDED.reps,
-          sets = EXCLUDED.sets,
-          total_volume = EXCLUDED.total_volume,
-          notes = EXCLUDED.notes`,
-        [
-          session.clientId,
-          log.exercise_id,
-          log.weight_used || 0,
-          log.reps_completed || 0,
-          log.sets_completed || 0,
-          totalVolume,
-          log.notes
-        ]
-      );
+    if (logsError) {
+      throw logsError;
     }
 
-    return session;
+    // 3. Fetch workout_exercises to get exercise_id
+    const workoutExerciseIds = logs?.map(log => log.workout_exercise_id) || [];
+    let exerciseIdMap: { [key: string]: string } = {};
+    
+    if (workoutExerciseIds.length > 0) {
+      const { data: workoutExercises, error: weError } = await supabase
+        .from('workout_exercises')
+        .select('id, exercise_id')
+        .in('id', workoutExerciseIds);
+
+      if (weError) {
+        throw weError;
+      }
+
+      exerciseIdMap = (workoutExercises || []).reduce((map, we) => {
+        map[we.id] = we.exercise_id;
+        return map;
+      }, {});
+    }
+
+    // 4. Insert each log into progress_metrics
+    for (const log of logs || []) {
+      const exerciseId = exerciseIdMap[log.workout_exercise_id];
+      if (exerciseId) {
+        const totalVolume = (log.sets_completed || 0) * (log.reps_completed || 0) * (log.weight_used || 0);
+
+        await supabase
+          .from('progress_metrics')
+          .upsert([{
+            client_id: session.client_id,
+            exercise_id: exerciseId,
+            date: new Date().toISOString().split('T')[0],
+            weight_lifted: log.weight_used || 0,
+            reps: log.reps_completed || 0,
+            sets: log.sets_completed || 0,
+            total_volume: totalVolume,
+            notes: log.notes
+          }], {
+            onConflict: 'client_id,exercise_id,date'
+          });
+      }
+    }
+
+    return {
+      id: session.id,
+      clientId: session.client_id,
+      workoutId: session.workout_id,
+      startedAt: session.started_at,
+      completedAt: session.completed_at,
+      durationMinutes: session.duration_minutes,
+      notes: session.notes,
+      status: session.status
+    };
   } catch (error) {
     console.error('Error completing workout session:', error);
     throw error;
@@ -170,29 +225,78 @@ export async function completeWorkoutSession(
 // Get workout history for a client
 export async function getWorkoutHistory(clientId: string, limit = 20): Promise<Record<string, unknown>[]> {
   try {
-    const result = await query(
-      `SELECT 
-        ws.id,
-        ws.client_id as "clientId",
-        ws.workout_id as "workoutId",
-        w.name as "workoutName",
-        ws.started_at as "startedAt",
-        ws.completed_at as "completedAt",
-        ws.duration_minutes as "durationMinutes",
-        ws.status,
-        COUNT(el.id) as "exercisesLogged",
-        ws.notes
-      FROM workout_sessions ws
-      JOIN workouts w ON ws.workout_id = w.id
-      LEFT JOIN exercise_logs el ON ws.id = el.workout_session_id
-      WHERE ws.client_id = $1
-      GROUP BY ws.id, ws.client_id, ws.workout_id, w.name, ws.started_at, 
-               ws.completed_at, ws.duration_minutes, ws.status, ws.notes
-      ORDER BY ws.started_at DESC
-      LIMIT $2`,
-      [clientId, limit]
-    );
-    return result.rows;
+    const { data: history, error } = await supabase
+      .from('workout_sessions')
+      .select(`
+        id,
+        client_id,
+        workout_id,
+        started_at,
+        completed_at,
+        duration_minutes,
+        status,
+        notes
+      `)
+      .eq('client_id', clientId)
+      .order('started_at', { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      throw error;
+    }
+
+    // Fetch exercise logs count and workout names
+    const workoutIds = (history || []).map(h => h.workout_id).filter(Boolean);
+    let workoutMap: { [key: string]: { name: string } } = {};
+    
+    if (workoutIds.length > 0) {
+      const { data: workouts, error: wError } = await supabase
+        .from('workouts')
+        .select('id, name')
+        .in('id', workoutIds);
+
+      if (wError) {
+        throw wError;
+      }
+
+      workoutMap = (workouts || []).reduce((map, w) => {
+        map[w.id] = { name: w.name };
+        return map;
+      }, {});
+    }
+
+    // Fetch exercise logs count for each session
+    const sessionIds = (history || []).map(h => h.id);
+    let exerciseLogsCountMap: { [key: string]: number } = {};
+    
+    if (sessionIds.length > 0) {
+      const { data: logsCount, error: lcError } = await supabase
+        .from('exercise_logs')
+        .select('id, workout_session_id')
+        .in('workout_session_id', sessionIds);
+
+      if (lcError) {
+        throw lcError;
+      }
+
+      exerciseLogsCountMap = (logsCount || []).reduce((map, log) => {
+        map[log.workout_session_id] = (map[log.workout_session_id] || 0) + 1;
+        return map;
+      }, {});
+    }
+
+    return (history || []).map(row => ({
+      id: row.id,
+      clientId: row.client_id,
+      workoutId: row.workout_id,
+      workoutName: workoutMap[row.workout_id]?.name || 'Unknown',
+      startedAt: row.started_at,
+      completedAt: row.completed_at,
+      durationMinutes: row.duration_minutes,
+      status: row.status,
+      exercisesLogged: exerciseLogsCountMap[row.id] || 0,
+      notes: row.notes
+    }));
   } catch (error) {
     console.error('Error fetching workout history:', error);
     throw error;
@@ -202,33 +306,34 @@ export async function getWorkoutHistory(clientId: string, limit = 20): Promise<R
 // Get progress data for charts
 export async function getProgressData(clientId: string, exerciseId?: string, days = 30): Promise<ProgressMetric[]> {
   try {
-    const params: (string | Date)[] = [clientId, new Date(Date.now() - days * 24 * 60 * 60 * 1000)];
-    let whereClause = `WHERE pm.client_id = $1 AND pm.date >= $2`;
+    let query = supabase
+      .from('progress_metrics')
+      .select('id, client_id, exercise_id, date, weight_lifted, reps, sets, total_volume, notes')
+      .eq('client_id', clientId)
+      .gte('date', new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
+      .order('date', { ascending: true });
 
     if (exerciseId && exerciseId !== 'all') {
-      whereClause += ` AND pm.exercise_id = $3`;
-      params.push(exerciseId);
+      query = query.eq('exercise_id', exerciseId);
     }
 
-    const result = await query(
-      `SELECT 
-        pm.id,
-        pm.client_id as "clientId",
-        pm.exercise_id as "exerciseId",
-        e.name as "exerciseName",
-        pm.date,
-        pm.weight_lifted as "weightLifted",
-        pm.reps,
-        pm.sets,
-        pm.total_volume as "totalVolume",
-        pm.notes
-      FROM progress_metrics pm
-      JOIN exercises e ON pm.exercise_id = e.id
-      ${whereClause}
-      ORDER BY pm.date ASC`,
-      params
-    );
-    return result.rows;
+    const { data: metrics, error } = await query;
+
+    if (error) {
+      throw error;
+    }
+
+    return (metrics || []).map(m => ({
+      id: m.id,
+      clientId: m.client_id,
+      exerciseId: m.exercise_id,
+      date: m.date,
+      weightLifted: m.weight_lifted,
+      reps: m.reps,
+      sets: m.sets,
+      totalVolume: m.total_volume,
+      notes: m.notes
+    }));
   } catch (error) {
     console.error('Error fetching progress data:', error);
     throw error;
@@ -238,29 +343,76 @@ export async function getProgressData(clientId: string, exerciseId?: string, day
 // Get exercise session logs
 export async function getSessionExerciseLogs(sessionId: string): Promise<Record<string, unknown>[]> {
   try {
-    const result = await query(
-      `SELECT 
-        el.id,
-        el.workout_session_id as "workoutSessionId",
-        el.workout_exercise_id as "workoutExerciseId",
-        e.name as "exerciseName",
-        el.sets_completed as "setsCompleted",
-        el.reps_completed as "repsCompleted",
-        el.weight_used as "weightUsed",
-        el.duration_seconds as "durationSeconds",
-        el.rpe,
-        el.notes,
-        we.sets as "plannedSets",
-        we.reps as "plannedReps",
-        we.weight as "plannedWeight"
-      FROM exercise_logs el
-      JOIN workout_exercises we ON el.workout_exercise_id = we.id
-      JOIN exercises e ON we.exercise_id = e.id
-      WHERE el.workout_session_id = $1
-      ORDER BY el.created_at ASC`,
-      [sessionId]
-    );
-    return result.rows;
+    const { data: logs, error } = await supabase
+      .from('exercise_logs')
+      .select('id, workout_session_id, workout_exercise_id, sets_completed, reps_completed, weight_used, duration_seconds, rpe, notes')
+      .eq('workout_session_id', sessionId)
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      throw error;
+    }
+
+    // Fetch workout_exercises with exercise_id
+    const workoutExerciseIds = logs?.map(log => log.workout_exercise_id) || [];
+    let workoutExerciseMap: { [key: string]: any } = {};
+    
+    if (workoutExerciseIds.length > 0) {
+      const { data: workoutExercises, error: weError } = await supabase
+        .from('workout_exercises')
+        .select('id, sets, reps, weight, exercise_id')
+        .in('id', workoutExerciseIds);
+
+      if (weError) {
+        throw weError;
+      }
+
+      workoutExerciseMap = (workoutExercises || []).reduce((map, we) => {
+        map[we.id] = we;
+        return map;
+      }, {});
+    }
+
+    // Fetch exercises
+    const exerciseIds = Object.values(workoutExerciseMap).map((we: any) => we.exercise_id).filter(Boolean);
+    let exerciseMap: { [key: string]: any } = {};
+    
+    if (exerciseIds.length > 0) {
+      const { data: exercises, error: exError } = await supabase
+        .from('exercises')
+        .select('id, name')
+        .in('id', exerciseIds);
+
+      if (exError) {
+        throw exError;
+      }
+
+      exerciseMap = (exercises || []).reduce((map, ex) => {
+        map[ex.id] = ex;
+        return map;
+      }, {});
+    }
+
+    return (logs || []).map(log => {
+      const workoutExercise = workoutExerciseMap[log.workout_exercise_id];
+      const exercise = exerciseMap[workoutExercise?.exercise_id];
+
+      return {
+        id: log.id,
+        workoutSessionId: log.workout_session_id,
+        workoutExerciseId: log.workout_exercise_id,
+        exerciseName: exercise?.name || 'Unknown',
+        setsCompleted: log.sets_completed,
+        repsCompleted: log.reps_completed,
+        weightUsed: log.weight_used,
+        durationSeconds: log.duration_seconds,
+        rpe: log.rpe,
+        notes: log.notes,
+        plannedSets: workoutExercise?.sets,
+        plannedReps: workoutExercise?.reps,
+        plannedWeight: workoutExercise?.weight
+      };
+    });
   } catch (error) {
     console.error('Error fetching session exercise logs:', error);
     throw error;
@@ -271,37 +423,32 @@ export async function getSessionExerciseLogs(sessionId: string): Promise<Record<
 export async function getClientStreakStats(clientId: string): Promise<Record<string, unknown>> {
   try {
     // 1. Basic stats
-    const basicStatsResult = await query(
-      `SELECT 
-        COUNT(*) as "totalCompleted",
-        MAX(completed_at) as "lastWorkout",
-        COALESCE(AVG(duration_minutes), 0)::INTEGER as "avgDuration"
-      FROM workout_sessions
-      WHERE client_id = $1 AND status = 'completed'`,
-      [clientId]
-    );
+    const { data: basicStats, error: basicError } = await supabase
+      .from('workout_sessions')
+      .select('id, completed_at, duration_minutes')
+      .eq('client_id', clientId)
+      .eq('status', 'completed');
+
+    if (basicError) {
+      throw basicError;
+    }
+
+    const sessions = basicStats || [];
+    const totalCompleted = sessions.length;
+    const lastWorkout = sessions.length > 0 ? sessions[0].completed_at : null;
+    const avgDuration = sessions.length > 0
+      ? Math.round(sessions.reduce((sum, s) => sum + (s.duration_minutes || 0), 0) / sessions.length)
+      : 0;
 
     // 2. Calculate current streak
-    const datesResult = await query(
-      `SELECT DISTINCT DATE(completed_at) as workout_date
-       FROM workout_sessions
-       WHERE client_id = $1 AND status = 'completed'
-       ORDER BY workout_date DESC`,
-      [clientId]
-    );
-
     let currentStreak = 0;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const dates = datesResult.rows.map(r => new Date(r.workout_date));
+    const uniqueDates = [...new Set(sessions.map(s => new Date(s.completed_at).toDateString()))].sort().reverse();
 
-    if (dates.length > 0) {
-      const checkDate = new Date();
-      checkDate.setHours(0, 0, 0, 0);
-
-      // If the last workout was not today or yesterday, streak is broken
-      const lastWorkoutDate = new Date(dates[0]);
+    if (uniqueDates.length > 0) {
+      const lastWorkoutDate = new Date(uniqueDates[0]);
       lastWorkoutDate.setHours(0, 0, 0, 0);
 
       const diffTime = Math.abs(today.getTime() - lastWorkoutDate.getTime());
@@ -309,8 +456,9 @@ export async function getClientStreakStats(clientId: string): Promise<Record<str
 
       if (diffDays <= 1) {
         // Calculate streak
-        const expectedDate = lastWorkoutDate;
-        for (const date of dates) {
+        const expectedDate = new Date(lastWorkoutDate);
+        for (const dateStr of uniqueDates) {
+          const date = new Date(dateStr);
           date.setHours(0, 0, 0, 0);
           if (date.getTime() === expectedDate.getTime()) {
             currentStreak++;
@@ -322,12 +470,12 @@ export async function getClientStreakStats(clientId: string): Promise<Record<str
       }
     }
 
-    const stats = basicStatsResult.rows[0] || { totalCompleted: 0, lastWorkout: null, avgDuration: 0 };
     return {
-      ...stats,
+      totalCompleted,
+      lastWorkout,
+      avgDuration,
       currentStreak
     };
-
   } catch (error) {
     console.error('Error calculating streak stats:', error);
     throw error;
@@ -337,20 +485,36 @@ export async function getClientStreakStats(clientId: string): Promise<Record<str
 // Get all exercises that have entries in progress_metrics for a client
 export async function getLoggedExercises(clientId: string): Promise<Record<string, unknown>[]> {
   try {
-    const result = await query(
-      `SELECT DISTINCT 
-        e.id, 
-        e.name, 
-        e.muscle_group as "muscleGroup"
-      FROM progress_metrics pm
-      JOIN exercises e ON pm.exercise_id = e.id
-      WHERE pm.client_id = $1
-      ORDER BY e.name ASC`,
-      [clientId]
-    );
-    return result.rows;
+    const { data: metrics, error } = await supabase
+      .from('progress_metrics')
+      .select(`
+        id,
+        exercise:exercise_id(id, name, muscle_group)
+      `)
+      .eq('client_id', clientId)
+      .order('exercise_id', { ascending: true });
+
+    if (error) {
+      throw error;
+    }
+
+    // Remove duplicates
+    const unique = new Map();
+    (metrics || []).forEach(m => {
+      const ex = (m.exercise as any);
+      if (ex && !unique.has(ex.id)) {
+        unique.set(ex.id, {
+          id: ex.id,
+          name: ex.name,
+          muscleGroup: ex.muscle_group
+        });
+      }
+    });
+
+    return Array.from(unique.values());
   } catch (error) {
     console.error('Error fetching logged exercises:', error);
     throw error;
   }
 }
+

@@ -1,4 +1,4 @@
-import { query } from './db';
+import supabase from './supabase-server';
 import { getClientStreakStats } from './workout-logging-service';
 
 export interface WorkoutExercise {
@@ -41,49 +41,84 @@ export interface ClientStats {
 // Get all workouts for a client
 export async function getClientWorkouts(clientId: string): Promise<Workout[]> {
   try {
-    const result = await query(
-      `SELECT 
-        w.id,
-        w.client_id as "clientId",
-        w.name,
-        w.description,
-        w.total_duration as "totalDuration",
-        w.status,
-        w.assigned_date as "assignedDate",
-        w.scheduled_date as "scheduledDate",
-        EXTRACT(DAY FROM (w.assigned_date::timestamp - CURRENT_DATE::timestamp))::INTEGER as "daysUntil",
-        COUNT(we.id) as "exerciseCount"
-      FROM workouts w
-      LEFT JOIN workout_exercises we ON w.id = we.workout_id
-      WHERE w.client_id = $1
-      GROUP BY w.id, w.client_id, w.name, w.description, w.total_duration, w.status, w.assigned_date, w.scheduled_date
-      ORDER BY w.assigned_date DESC`,
-      [clientId]
-    );
+    const { data: workouts, error: workoutsError } = await supabase
+      .from('workouts')
+      .select(`
+        id,
+        client_id,
+        name,
+        description,
+        total_duration,
+        status,
+        assigned_date,
+        scheduled_date
+      `)
+      .eq('client_id', clientId)
+      .order('assigned_date', { ascending: false });
+
+    if (workoutsError) {
+      throw workoutsError;
+    }
 
     // Fetch exercises for each workout
     const workoutsWithExercises = await Promise.all(
-      result.rows.map(async (workout) => {
-        const exercisesResult = await query(
-          `SELECT 
-            we.id,
-            e.name as "exerciseName",
-            we.sets,
-            we.reps,
-            we.weight,
-            we.duration,
-            e.muscle_group as "muscleGroup",
-            e.description
-          FROM workout_exercises we
-          JOIN exercises e ON we.exercise_id = e.id
-          WHERE we.workout_id = $1
-          ORDER BY we.order_index ASC`,
-          [workout.id]
-        );
+      (workouts || []).map(async (workout) => {
+        // Fetch workout exercises with only exercise_id
+        const { data: workoutExercises, error: woError } = await supabase
+          .from('workout_exercises')
+          .select('id, sets, reps, weight, duration, exercise_id')
+          .eq('workout_id', workout.id)
+          .order('order_index');
+
+        if (woError) {
+          throw woError;
+        }
+
+        // Fetch all exercises referenced by this workout
+        const exerciseIds = workoutExercises?.map(ex => ex.exercise_id) || [];
+        let exerciseMap: { [key: string]: any } = {};
+        
+        if (exerciseIds.length > 0) {
+          const { data: exercises, error: exercisesError } = await supabase
+            .from('exercises')
+            .select('id, name, muscle_group, description')
+            .in('id', exerciseIds);
+
+          if (exercisesError) {
+            throw exercisesError;
+          }
+
+          exerciseMap = (exercises || []).reduce((map, ex) => {
+            map[ex.id] = ex;
+            return map;
+          }, {});
+        }
+
+        const formattedExercises = (workoutExercises || []).map(ex => {
+          const exercise = exerciseMap[ex.exercise_id];
+          return {
+            id: ex.id,
+            exerciseName: exercise?.name || 'Unknown',
+            sets: ex.sets,
+            reps: ex.reps,
+            weight: ex.weight,
+            duration: ex.duration,
+            muscleGroup: exercise?.muscle_group || 'Unknown',
+            description: exercise?.description || ''
+          };
+        });
 
         return {
-          ...workout,
-          exercises: exercisesResult.rows,
+          id: workout.id,
+          clientId: workout.client_id,
+          name: workout.name,
+          description: workout.description,
+          totalDuration: workout.total_duration,
+          status: workout.status,
+          assignedDate: workout.assigned_date,
+          scheduledDate: workout.scheduled_date,
+          exercises: formattedExercises,
+          exerciseCount: formattedExercises.length
         };
       })
     );
@@ -98,48 +133,85 @@ export async function getClientWorkouts(clientId: string): Promise<Workout[]> {
 // Get single workout with all details
 export async function getWorkoutById(workoutId: string): Promise<Workout | null> {
   try {
-    const result = await query(
-      `SELECT 
-        w.id,
-        w.client_id as "clientId",
-        w.name,
-        w.description,
-        w.total_duration as "totalDuration",
-        w.status,
-        w.assigned_date as "assignedDate",
-        w.scheduled_date as "scheduledDate"
-      FROM workouts w
-      WHERE w.id = $1`,
-      [workoutId]
-    );
+    const { data: workout, error: workoutError } = await supabase
+      .from('workouts')
+      .select(`
+        id,
+        client_id,
+        name,
+        description,
+        total_duration,
+        status,
+        assigned_date,
+        scheduled_date
+      `)
+      .eq('id', workoutId)
+      .maybeSingle();
 
-    if (result.rows.length === 0) {
+    if (workoutError) {
+      throw workoutError;
+    }
+
+    if (!workout) {
       return null;
     }
 
-    const workout = result.rows[0];
+    // Fetch workout exercises with only exercise_id
+    const { data: workoutExercises, error: woError } = await supabase
+      .from('workout_exercises')
+      .select('id, sets, reps, weight, duration, exercise_id')
+      .eq('workout_id', workoutId)
+      .order('order_index');
 
-    const exercisesResult = await query(
-      `SELECT 
-        we.id,
-        e.name as "exerciseName",
-        we.sets,
-        we.reps,
-        we.weight,
-        we.duration,
-        e.muscle_group as "muscleGroup",
-        e.description
-      FROM workout_exercises we
-      JOIN exercises e ON we.exercise_id = e.id
-      WHERE we.workout_id = $1
-      ORDER BY we.order_index ASC`,
-      [workoutId]
-    );
+    if (woError) {
+      throw woError;
+    }
+
+    // Fetch all exercises referenced by this workout
+    const exerciseIds = workoutExercises?.map(ex => ex.exercise_id) || [];
+    let exerciseMap: { [key: string]: any } = {};
+    
+    if (exerciseIds.length > 0) {
+      const { data: exercises, error: exercisesError } = await supabase
+        .from('exercises')
+        .select('id, name, muscle_group, description')
+        .in('id', exerciseIds);
+
+      if (exercisesError) {
+        throw exercisesError;
+      }
+
+      exerciseMap = (exercises || []).reduce((map, ex) => {
+        map[ex.id] = ex;
+        return map;
+      }, {});
+    }
+
+    const formattedExercises = (workoutExercises || []).map(ex => {
+      const exercise = exerciseMap[ex.exercise_id];
+      return {
+        id: ex.id,
+        exerciseName: exercise?.name || 'Unknown',
+        sets: ex.sets,
+        reps: ex.reps,
+        weight: ex.weight,
+        duration: ex.duration,
+        muscleGroup: exercise?.muscle_group || 'Unknown',
+        description: exercise?.description || ''
+      };
+    });
 
     return {
-      ...workout,
-      exercises: exercisesResult.rows,
-      exerciseCount: exercisesResult.rows.length,
+      id: workout.id,
+      clientId: workout.client_id,
+      name: workout.name,
+      description: workout.description,
+      totalDuration: workout.total_duration,
+      status: workout.status,
+      assignedDate: workout.assigned_date,
+      scheduledDate: workout.scheduled_date,
+      exercises: formattedExercises,
+      exerciseCount: formattedExercises.length
     };
   } catch (error) {
     console.error('Error fetching workout:', error);
@@ -150,44 +222,65 @@ export async function getWorkoutById(workoutId: string): Promise<Workout | null>
 // Get client statistics
 export async function getClientStats(clientId: string): Promise<ClientStats> {
   try {
-    const result = await query(
-      `SELECT 
-        COUNT(CASE WHEN status = 'completed' THEN 1 END) as "totalCompleted",
-        COALESCE(AVG(CASE WHEN status = 'completed' THEN total_duration END), 0) as "avgDuration",
-        COUNT(*) as "totalWorkouts"
-      FROM workouts
-      WHERE client_id = $1 AND status IN ('completed', 'active', 'pending')`,
-      [clientId]
-    );
+    // Get workouts for the client
+    const { data: workouts, error: workoutsError } = await supabase
+      .from('workouts')
+      .select('id, status, total_duration')
+      .eq('client_id', clientId)
+      .in('status', ['completed', 'active', 'pending']);
 
-    const stats = result.rows[0];
-    const totalWorkouts = parseInt(stats.totalWorkouts) || 0;
+    if (workoutsError) {
+      throw workoutsError;
+    }
+
+    const totalWorkouts = workouts?.length || 0;
+    const completedCount = workouts?.filter(w => w.status === 'completed').length || 0;
+    const avgDuration = workouts && workouts.length > 0 
+      ? workouts.filter(w => w.status === 'completed').reduce((sum, w) => sum + (w.total_duration || 0), 0) / completedCount
+      : 0;
 
     // Get real stats from logging service (based on sessions)
     const streakStats = await getClientStreakStats(clientId);
 
-    // Get coach information
-    const coachResult = await query(
-      `SELECT co.id, u.id as "coachUserId", u.name, u.email
-       FROM clients cl
-       JOIN coaches co ON cl.coach_id = co.id
-       JOIN users u ON co.user_id = u.id
-       WHERE cl.user_id = $1 OR cl.id = $1
-       LIMIT 1`,
-      [clientId]
-    );
+    // Get coach information - fetch coach_id only first
+    const { data: clientData, error: clientError } = await supabase
+      .from('clients')
+      .select('coach_id')
+      .eq('user_id', clientId)
+      .maybeSingle();
 
-    const coach = coachResult.rows[0] ? {
-      name: coachResult.rows[0].name,
-      email: coachResult.rows[0].email,
-      userId: coachResult.rows[0].coachUserId
-    } : undefined;
+    if (clientError) {
+      throw clientError;
+    }
+
+    let coach: { name: string; email: string; userId?: string } | undefined;
+    
+    if (clientData?.coach_id) {
+      // Now fetch the coach's user details
+      const { data: coachUser, error: coachError } = await supabase
+        .from('users')
+        .select('id, name, email')
+        .eq('id', clientData.coach_id)
+        .maybeSingle();
+
+      if (coachError) {
+        throw coachError;
+      }
+
+      if (coachUser) {
+        coach = {
+          name: coachUser.name,
+          email: coachUser.email,
+          userId: coachUser.id
+        };
+      }
+    }
 
     return {
-      totalWorkoutsCompleted: parseInt(String(streakStats.totalCompleted)) || 0,
+      totalWorkoutsCompleted: completedCount,
       currentStreak: Number(streakStats.currentStreak) || 0,
-      averageWorkoutTime: Math.round(parseFloat(String(streakStats.avgDuration)) || 0),
-      completionRate: totalWorkouts > 0 ? Math.round(((parseInt(String(streakStats.totalCompleted)) || 0) / totalWorkouts) * 100) : 0,
+      averageWorkoutTime: Math.round(avgDuration || 0),
+      completionRate: totalWorkouts > 0 ? Math.round((completedCount / totalWorkouts) * 100) : 0,
       coach
     };
   } catch (error) {

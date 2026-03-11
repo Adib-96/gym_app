@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { query } from '@/lib/db';
+import supabase from '@/lib/supabase-server';
 import { authenticateRequest } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
@@ -16,28 +16,30 @@ export async function GET(request: NextRequest) {
 
         const { searchParams } = new URL(request.url);
         const search = searchParams.get('search') || '';
-        const role = searchParams.get('role') || '';
+        const roleFilter = searchParams.get('role') || '';
 
-        let queryText = 'SELECT id, name, email, role, created_at FROM users WHERE 1=1';
-        const params: string[] = [];
+        let query = supabase
+            .from('users')
+            .select('id, name, email, role, created_at')
+            .order('created_at', { ascending: false });
 
         if (search) {
-            params.push(`%${search}%`);
-            queryText += ` AND (name ILIKE $${params.length} OR email ILIKE $${params.length})`;
+            query = query.or(`name.ilike.%${search}%,email.ilike.%${search}%`);
         }
 
-        if (role) {
-            params.push(role);
-            queryText += ` AND role = $${params.length}`;
+        if (roleFilter) {
+            query = query.eq('role', roleFilter);
         }
 
-        queryText += ' ORDER BY created_at DESC';
+        const { data: usersData, error: supabaseError } = await query;
 
-        const usersResult = await query(queryText, params);
+        if (supabaseError) {
+            throw supabaseError;
+        }
 
         return NextResponse.json({
             success: true,
-            users: usersResult.rows
+            users: usersData || []
         });
 
     } catch (error) {
@@ -68,10 +70,14 @@ export async function PATCH(request: NextRequest) {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
         }
 
-        await query(
-            'UPDATE users SET role = $1 WHERE id = $2',
-            [role, userId]
-        );
+        const { error: updateError } = await supabase
+            .from('users')
+            .update({ role })
+            .eq('id', userId);
+
+        if (updateError) {
+            throw updateError;
+        }
 
         return NextResponse.json({
             success: true,
