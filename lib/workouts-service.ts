@@ -38,7 +38,18 @@ export interface ClientStats {
   };
 }
 
-// Get all workouts for a client
+// Type for exercises fetched from supabase
+interface ExerciseRow {
+  id: string;
+  name: string;
+  muscle_group?: string;
+  description?: string;
+}
+
+// Type for workout_exercises fetched from supabase
+
+
+// --- Get all workouts for a client ---
 export async function getClientWorkouts(clientId: string): Promise<Workout[]> {
   try {
     const { data: workouts, error: workoutsError } = await supabase
@@ -56,45 +67,38 @@ export async function getClientWorkouts(clientId: string): Promise<Workout[]> {
       .eq('client_id', clientId)
       .order('assigned_date', { ascending: false });
 
-    if (workoutsError) {
-      throw workoutsError;
-    }
+    if (workoutsError) throw workoutsError;
 
-    // Fetch exercises for each workout
-    const workoutsWithExercises = await Promise.all(
+    const workoutsWithExercises: Workout[] = await Promise.all(
       (workouts || []).map(async (workout) => {
-        // Fetch workout exercises with only exercise_id
+        // Fetch workout exercises
         const { data: workoutExercises, error: woError } = await supabase
           .from('workout_exercises')
           .select('id, sets, reps, weight, duration, exercise_id')
           .eq('workout_id', workout.id)
           .order('order_index');
 
-        if (woError) {
-          throw woError;
-        }
+        if (woError) throw woError;
 
-        // Fetch all exercises referenced by this workout
-        const exerciseIds = workoutExercises?.map(ex => ex.exercise_id) || [];
-        let exerciseMap: { [key: string]: any } = {};
-        
+        // Fetch exercises referenced by this workout
+        const exerciseIds = (workoutExercises || []).map(ex => ex.exercise_id);
+        let exerciseMap: Record<string, ExerciseRow> = {};
+
         if (exerciseIds.length > 0) {
           const { data: exercises, error: exercisesError } = await supabase
             .from('exercises')
             .select('id, name, muscle_group, description')
             .in('id', exerciseIds);
 
-          if (exercisesError) {
-            throw exercisesError;
-          }
+          if (exercisesError) throw exercisesError;
 
-          exerciseMap = (exercises || []).reduce((map, ex) => {
+          exerciseMap = (exercises || []).reduce<Record<string, ExerciseRow>>((map, ex) => {
             map[ex.id] = ex;
             return map;
           }, {});
         }
 
-        const formattedExercises = (workoutExercises || []).map(ex => {
+        const formattedExercises: WorkoutExercise[] = (workoutExercises || []).map(ex => {
           const exercise = exerciseMap[ex.exercise_id];
           return {
             id: ex.id,
@@ -123,14 +127,14 @@ export async function getClientWorkouts(clientId: string): Promise<Workout[]> {
       })
     );
 
-    return workoutsWithExercises as Workout[];
+    return workoutsWithExercises;
   } catch (error) {
     console.error('Error fetching client workouts:', error);
     throw error;
   }
 }
 
-// Get single workout with all details
+// --- Get single workout by ID ---
 export async function getWorkoutById(workoutId: string): Promise<Workout | null> {
   try {
     const { data: workout, error: workoutError } = await supabase
@@ -148,46 +152,35 @@ export async function getWorkoutById(workoutId: string): Promise<Workout | null>
       .eq('id', workoutId)
       .maybeSingle();
 
-    if (workoutError) {
-      throw workoutError;
-    }
+    if (workoutError) throw workoutError;
+    if (!workout) return null;
 
-    if (!workout) {
-      return null;
-    }
-
-    // Fetch workout exercises with only exercise_id
     const { data: workoutExercises, error: woError } = await supabase
       .from('workout_exercises')
       .select('id, sets, reps, weight, duration, exercise_id')
       .eq('workout_id', workoutId)
       .order('order_index');
 
-    if (woError) {
-      throw woError;
-    }
+    if (woError) throw woError;
 
-    // Fetch all exercises referenced by this workout
-    const exerciseIds = workoutExercises?.map(ex => ex.exercise_id) || [];
-    let exerciseMap: { [key: string]: any } = {};
-    
+    const exerciseIds = (workoutExercises || []).map(ex => ex.exercise_id);
+    let exerciseMap: Record<string, ExerciseRow> = {};
+
     if (exerciseIds.length > 0) {
       const { data: exercises, error: exercisesError } = await supabase
         .from('exercises')
         .select('id, name, muscle_group, description')
         .in('id', exerciseIds);
 
-      if (exercisesError) {
-        throw exercisesError;
-      }
+      if (exercisesError) throw exercisesError;
 
-      exerciseMap = (exercises || []).reduce((map, ex) => {
+      exerciseMap = (exercises || []).reduce<Record<string, ExerciseRow>>((map, ex) => {
         map[ex.id] = ex;
         return map;
       }, {});
     }
 
-    const formattedExercises = (workoutExercises || []).map(ex => {
+    const formattedExercises: WorkoutExercise[] = (workoutExercises || []).map(ex => {
       const exercise = exerciseMap[ex.exercise_id];
       return {
         id: ex.id,
@@ -214,59 +207,50 @@ export async function getWorkoutById(workoutId: string): Promise<Workout | null>
       exerciseCount: formattedExercises.length
     };
   } catch (error) {
-    console.error('Error fetching workout:', error);
+    console.error('Error fetching workout by ID:', error);
     throw error;
   }
 }
 
-// Get client statistics
+// --- Get client statistics ---
 export async function getClientStats(clientId: string): Promise<ClientStats> {
   try {
-    // Get workouts for the client
+    // Fetch workouts
     const { data: workouts, error: workoutsError } = await supabase
       .from('workouts')
       .select('id, status, total_duration')
       .eq('client_id', clientId)
       .in('status', ['completed', 'active', 'pending']);
 
-    if (workoutsError) {
-      throw workoutsError;
-    }
+    if (workoutsError) throw workoutsError;
 
     const totalWorkouts = workouts?.length || 0;
     const completedCount = workouts?.filter(w => w.status === 'completed').length || 0;
-    const avgDuration = workouts && workouts.length > 0 
-      ? workouts.filter(w => w.status === 'completed').reduce((sum, w) => sum + (w.total_duration || 0), 0) / completedCount
+    const avgDuration = completedCount > 0
+      ? Math.round(workouts!.filter(w => w.status === 'completed').reduce((sum, w) => sum + (w.total_duration || 0), 0) / completedCount)
       : 0;
 
-    // Get real stats from logging service (based on sessions)
+    // Streak stats from workout logging service
     const streakStats = await getClientStreakStats(clientId);
 
-    // Get coach information - fetch coach_id only first
+    // Coach information
     const { data: clientData, error: clientError } = await supabase
       .from('clients')
       .select('coach_id')
       .eq('user_id', clientId)
       .maybeSingle();
 
-    if (clientError) {
-      throw clientError;
-    }
+    if (clientError) throw clientError;
 
     let coach: { name: string; email: string; userId?: string } | undefined;
-    
     if (clientData?.coach_id) {
-      // Now fetch the coach's user details
       const { data: coachUser, error: coachError } = await supabase
         .from('users')
         .select('id, name, email')
         .eq('id', clientData.coach_id)
         .maybeSingle();
 
-      if (coachError) {
-        throw coachError;
-      }
-
+      if (coachError) throw coachError;
       if (coachUser) {
         coach = {
           name: coachUser.name,
@@ -279,7 +263,7 @@ export async function getClientStats(clientId: string): Promise<ClientStats> {
     return {
       totalWorkoutsCompleted: completedCount,
       currentStreak: Number(streakStats.currentStreak) || 0,
-      averageWorkoutTime: Math.round(avgDuration || 0),
+      averageWorkoutTime: avgDuration,
       completionRate: totalWorkouts > 0 ? Math.round((completedCount / totalWorkouts) * 100) : 0,
       coach
     };
